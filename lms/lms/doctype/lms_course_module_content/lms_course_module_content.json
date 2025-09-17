@@ -1,0 +1,122 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:CM-{DD}{MM}{YY}-{####}",
+ "creation": "2025-09-17 11:14:28.634880",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "module_name",
+  "column_break_gikq",
+  "content_type",
+  "section_break_itpz",
+  "content_order",
+  "is_published",
+  "section_break_vpjy",
+  "essay_title",
+  "essay_content",
+  "video_title",
+  "video_description",
+  "video_content",
+  "quiz_title",
+  "quiz_description",
+  "quiz_questions"
+ ],
+ "fields": [
+  {
+   "fieldname": "content_type",
+   "fieldtype": "Select",
+   "label": "Content Type",
+   "options": "Essay\nVideo\nQuiz"
+  },
+  {
+   "fieldname": "column_break_gikq",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_itpz",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "1",
+   "fieldname": "content_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Content Order",
+   "width": "60"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Published"
+  },
+  {
+   "fieldname": "section_break_vpjy",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "video_title",
+   "fieldtype": "Data",
+   "label": "Video Title"
+  },
+  {
+   "fieldname": "essay_title",
+   "fieldtype": "Text Editor",
+   "label": "Essay title"
+  },
+  {
+   "fieldname": "module_name",
+   "fieldtype": "Data",
+   "label": "Module name"
+  },
+  {
+   "fieldname": "essay_content",
+   "fieldtype": "Text",
+   "label": "Essay_Content"
+  },
+  {
+   "fieldname": "video_description",
+   "fieldtype": "Long Text",
+   "label": "video decription"
+  },
+  {
+   "fieldname": "video_content",
+   "fieldtype": "Attach",
+   "label": "Video Content"
+  },
+  {
+   "fieldname": "quiz_title",
+   "fieldtype": "Data",
+   "label": "Quiz Title"
+  },
+  {
+   "fieldname": "quiz_description",
+   "fieldtype": "Text",
+   "label": "Quiz description"
+  },
+  {
+   "fieldname": "quiz_questions",
+   "fieldtype": "Table",
+   "label": "Quiz Questions",
+   "options": "LMS Quiz Question"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-17 11:47:56.926544",
+ "modified_by": "Administrator",
+ "module": "LMS",
+ "name": "LMS Course Module Content",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
