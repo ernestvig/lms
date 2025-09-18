@@ -11,9 +11,9 @@ EXTRA_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 IGNORE_TEST_RECORD_DEPENDENCIES = []  # eg. ["User"]
 
 
-class IntegrationTestLMSTag(IntegrationTestCase):
+class IntegrationTestLMSCourseModuleContent(IntegrationTestCase):
 	"""
-	Integration tests for LMSTag.
+	Integration tests for LMSCourseModuleContent.
 	Use this class for testing interactions between multiple components.
 	"""
 

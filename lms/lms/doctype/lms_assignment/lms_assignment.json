@@ -13,8 +13,8 @@
   "column_break_hmwv",
   "type",
   "grade_assignment",
-  "test_score",
   "instructions",
+  "test_score",
   "recipient",
   "subject",
   "section_break_sjti",
@@ -110,9 +110,9 @@
   },
   {
    "fieldname": "recipient",
-   "fieldtype": "Table",
+   "fieldtype": "Table MultiSelect",
    "label": "Recipient ",
-   "options": "LMS Assignment Recipient"
+   "options": "PL Students"
   },
   {
    "fieldname": "subject",
@@ -123,7 +123,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-16 16:51:01.091249",
+ "modified": "2025-09-18 16:25:57.291330",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",
@@ -162,6 +162,30 @@
    "report": 1,
    "role": "LMS Student",
    "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Parent",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",

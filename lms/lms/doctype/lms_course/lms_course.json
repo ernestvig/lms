@@ -15,29 +15,41 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "course_setup_section",
   "title",
-  "course_description",
+  "video_link",
   "tags",
   "column_break_3",
+  "instructors",
   "category",
-  "course_language",
-  "price",
-  "education_level",
+  "status",
   "column_break_htgn",
   "image",
-  "subject",
-  "instructors",
-  "section_break_18",
-  "introduction_video",
-  "course_objective",
-  "duration",
-  "is_drafted",
+  "card_gradient",
+  "section_break_7",
   "published",
-	 "video_link",
-  "column_break_viqw",
+  "published_on",
+  "draft",
+  "column_break_10",
+  "upcoming",
+  "featured",
+  "disable_self_learning",
+  "section_break_18",
+  "short_introduction",
   "requirement",
-  "modules",
+  "column_break_viqw",
+  "description",
+  "objectives",
+  "section_break_gglp",
+  "chapters",
+  "related_courses",
+  "pricing_tab",
+  "pricing_section",
+  "paid_course",
+  "enable_certification",
+  "paid_certificate",
+  "evaluator",
+  "column_break_acoj",
+  "course_price",
   "currency",
   "amount_usd",
   "tab_4_tab",
@@ -45,13 +57,11 @@
   "enrollments",
   "lessons",
   "rating",
-  "paid_course",
-  "course_price",
-  "column_break_acoj",
-  "published_on",
-  "featured",
-  "column_break_nopn",
-  "pricing_tab"
+  "education_level",
+  "course_language",
+  "subject",
+  "modules",
+  "video"
  ],
  "fields": [
   {
@@ -63,118 +73,108 @@
    "width": "200"
   },
   {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description",
+   "reqd": 1
+  },
+  {
    "default": "0",
    "fieldname": "published",
    "fieldtype": "Check",
-   "label": "Is Published"
+   "label": "Published"
   },
   {
    "fieldname": "column_break_3",
    "fieldtype": "Column Break"
   },
   {
-   "fieldname": "image",
-   "fieldtype": "Attach Image",
-   "label": "Thubmnail Image"
-  },
-  {
-   "fieldname": "tags",
-   "fieldtype": "Link",
-   "label": "Tags",
-   "options": "LMS Tag"
-  },
-  {
-   "fieldname": "section_break_18",
-   "fieldtype": "Section Break",
-   "label": "Course Info"
-  },
-  {
-   "fieldname": "column_break_htgn",
-   "fieldtype": "Column Break",
-   "label": "Profile Image"
-  },
-  {
-   "fieldname": "category",
-   "fieldtype": "Link",
-   "label": "Category",
-   "options": "LMS Category"
-  },
-  {
-   "fieldname": "course_setup_section",
-   "fieldtype": "Section Break",
-   "label": "Course Setup"
-  },
-  {
-   "fieldname": "course_description",
-   "fieldtype": "Text Editor",
-   "label": "Course description"
-  },
-  {
-   "fieldname": "course_language",
-   "fieldtype": "Select",
-   "label": "Course Language",
-   "options": "English\nTwi\nFrench\nGa"
-  },
-	 {
    "fieldname": "video_link",
    "fieldtype": "Data",
-   "label": "Video Link (URL)",
-   "description": "Alternative to uploading video file - provide YouTube, Vimeo or other video URL"
+   "label": "Video Embed Link"
   },
   {
-   "fieldname": "price",
-   "fieldtype": "Currency",
-   "label": "Pricing "
-  },
-  {
-   "fieldname": "introduction_video",
-   "fieldtype": "Attach",
-   "label": "Introduction Video"
-  },
-  {
-   "fieldname": "course_objective",
-   "fieldtype": "Text",
-   "label": "Course Objective"
-  },
-  {
-   "fieldname": "duration",
-   "fieldtype": "Data",
-   "label": "Duration"
-  },
-  {
-   "fieldname": "requirement",
-   "fieldtype": "Text",
-   "label": "Requirements"
+   "fieldname": "short_introduction",
+   "fieldtype": "Small Text",
+   "label": "Short Introduction",
+   "reqd": 1
   },
   {
    "default": "0",
-   "fieldname": "is_drafted",
+   "fieldname": "disable_self_learning",
    "fieldtype": "Check",
-   "label": "Is Drafted"
+   "label": "Disable Self Learning"
   },
   {
-   "fieldname": "modules",
+   "fieldname": "image",
+   "fieldtype": "Attach Image",
+   "label": "Preview Image"
+  },
+  {
+   "fieldname": "tags",
+   "fieldtype": "Data",
+   "label": "Tags"
+  },
+  {
+   "default": "0",
+   "fieldname": "upcoming",
+   "fieldtype": "Check",
+   "label": "Upcoming"
+  },
+  {
+   "fieldname": "chapters",
    "fieldtype": "Table",
-   "label": "Modules",
-   "options": "LMS Course Module Content"
-  },
-  {
-   "fieldname": "subject",
-   "fieldtype": "Link",
-   "label": "Subject",
-   "options": "Subject"
+   "label": "Chapters",
+   "options": "Chapter Reference"
   },
   {
    "fieldname": "instructors",
-   "fieldtype": "Table",
+   "fieldtype": "Table MultiSelect",
+   "in_standard_filter": 1,
    "label": "Instructors",
-   "options": "Course Instructor"
+   "max_height": "50px",
+   "options": "Course Instructor",
+   "reqd": 1
   },
   {
-   "fieldname": "education_level",
-   "fieldtype": "Link",
-   "label": "Education Level",
-   "options": "LMS Course Levels"
+   "fieldname": "section_break_7",
+   "fieldtype": "Section Break",
+   "label": "Course Settings"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_certification",
+   "fieldtype": "Check",
+   "label": "Completion Certificate"
+  },
+  {
+   "fieldname": "related_courses",
+   "fieldtype": "Table",
+   "label": "Related Courses",
+   "options": "Related Courses"
+  },
+  {
+   "default": "In Progress",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "hidden": 1,
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Status",
+   "options": "In Progress\nUnder Review\nApproved",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_18",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "column_break_10",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pricing_section",
+   "fieldtype": "Section Break"
   },
   {
    "fieldname": "currency",
@@ -217,14 +217,21 @@
    "label": "Featured"
   },
   {
+   "fieldname": "column_break_viqw",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "section_break_gglp",
+   "fieldtype": "Section Break"
+  },
+  {
    "fieldname": "pricing_tab",
    "fieldtype": "Tab Break",
    "label": "Pricing and Certification"
   },
   {
    "fieldname": "column_break_htgn",
-   "fieldtype": "Column Break",
-   "label": "Profile Image"
+   "fieldtype": "Column Break"
   },
   {
    "fieldname": "category",
@@ -263,12 +270,68 @@
    "read_only": 1
   },
   {
-   "fieldname": "column_break_viqw",
-   "fieldtype": "Column Break"
+   "default": "0",
+   "fieldname": "paid_certificate",
+   "fieldtype": "Check",
+   "label": "Paid Certificate"
   },
   {
-   "fieldname": "column_break_nopn",
-   "fieldtype": "Column Break"
+   "fieldname": "modules",
+   "fieldtype": "Table",
+   "label": "Modules",
+   "options": "LMS Course Module Content"
+  },
+  {
+   "depends_on": "paid_certificate",
+   "fieldname": "evaluator",
+   "fieldtype": "Link",
+   "label": "Evaluator",
+   "options": "Course Evaluator"
+  },
+  {
+   "fieldname": "card_gradient",
+   "fieldtype": "Select",
+   "label": "Color",
+   "options": "Red\nBlue\nGreen\nAmber\nCyan\nOrange\nPink\nPurple\nTeal\nViolet\nYellow\nGray"
+  },
+  {
+   "fieldname": "education_level",
+   "fieldtype": "Link",
+   "label": "Education Level",
+   "options": "LMS Course Levels"
+  },
+  {
+   "fieldname": "course_language",
+   "fieldtype": "Select",
+   "label": "Course Language",
+   "options": "English\nTwi\nFrench\nGa"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "Subject"
+  },
+  {
+   "default": "1",
+   "fieldname": "draft",
+   "fieldtype": "Check",
+   "label": "Draft"
+  },
+  {
+   "fieldname": "video",
+   "fieldtype": "Attach",
+   "label": "Introduction video"
+  },
+  {
+   "fieldname": "requirement",
+   "fieldtype": "Text",
+   "label": "Requirements"
+  },
+  {
+   "fieldname": "objectives",
+   "fieldtype": "Text",
+   "label": "Objectives"
   }
  ],
  "is_published_field": "published",
@@ -287,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-17 16:29:25.238429",
+ "modified": "2025-09-18 12:42:02.747270",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
@@ -338,7 +401,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "Teacher",
+   "role": "LMS Student",
    "share": 1,
    "write": 1
   },
@@ -350,7 +413,7 @@
    "print": 1,
    "read": 1,
    "report": 1,
-   "role": "LMS Student",
+   "role": "Teacher",
    "share": 1,
    "write": 1
   },
