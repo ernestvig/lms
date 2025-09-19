@@ -76,7 +76,7 @@ def send_mail(payment):
 		"title": frappe.db.get_value(
 			payment.payment_for_document_type, payment.payment_for_document, "title"
 		),
-		"link": f"/lms/billing/{ payment.payment_for_document_type.split(' ')[-1].lower() }/{ payment.payment_for_document }",
+		"link": f"/lms/billing/{payment.payment_for_document_type.split(' ')[-1].lower()}/{payment.payment_for_document}",
 	}
 
 	if custom_template:

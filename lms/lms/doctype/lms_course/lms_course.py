@@ -216,3 +216,27 @@ def reindex_exercises(doc):
 	course = frappe.get_doc("LMS Course", course_data["name"])
 	course.reindex_exercises()
 	frappe.msgprint("All exercises in this course have been re-indexed.")
+
+
+@frappe.whitelist(allow_guest=True)
+def get_all_instructors_course(instructor, fields=None):
+	"""Get all courses for a given instructor"""
+	import json
+
+	if isinstance(fields, str):
+		fields = json.loads(fields) if fields else ["name", "title"]
+
+	fields = fields or ["*"]
+
+	# Step 1: Get all course names linked to instructor
+	course_names = frappe.get_all("Course Instructor", filters={"instructor": instructor}, pluck="parent")
+
+	if not course_names:
+		return []
+
+	# Step 2: Get courses
+	courses = frappe.get_list(
+		"LMS Course", filters={"name": ["in", course_names]}, fields=fields, order_by="modified desc"
+	)
+
+	return courses

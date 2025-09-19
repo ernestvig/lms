@@ -13,9 +13,17 @@
   "column_break_hmwv",
   "type",
   "grade_assignment",
+  "instructions",
+  "test_score",
+  "recipient",
+  "subject",
   "section_break_sjti",
   "show_answer",
-  "answer"
+  "answer",
+  "due_date",
+  "status",
+  "feedback",
+  "correction"
  ],
  "fields": [
   {
@@ -30,7 +38,7 @@
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Type",
-   "options": "Document\nPDF\nURL\nImage\nText",
+   "options": "Quiz/Multiple choice\nPractical task\nVideo submission\nEssay/Written task",
    "reqd": 1
   },
   {
@@ -68,11 +76,54 @@
   {
    "fieldname": "section_break_sjti",
    "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "due_date",
+   "fieldtype": "Datetime",
+   "label": "Due Date"
+  },
+  {
+   "fieldname": "test_score",
+   "fieldtype": "Data",
+   "label": "Test Score"
+  },
+  {
+   "fieldname": "instructions",
+   "fieldtype": "Text Editor",
+   "label": "Instructions"
+  },
+  {
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Status",
+   "options": "Pending\nSubmitted\nOverdue"
+  },
+  {
+   "fieldname": "feedback",
+   "fieldtype": "Text Editor",
+   "label": "Feedback"
+  },
+  {
+   "fieldname": "correction",
+   "fieldtype": "Text Editor",
+   "label": "Correction Field"
+  },
+  {
+   "fieldname": "recipient",
+   "fieldtype": "Table MultiSelect",
+   "label": "Recipient ",
+   "options": "PL Students"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "Subject"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-12-24 09:36:31.464508",
+ "modified": "2025-09-18 16:25:57.291330",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",
@@ -111,8 +162,33 @@
    "report": 1,
    "role": "LMS Student",
    "share": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Parent",
+   "share": 1,
+   "write": 1
   }
  ],
+ "row_format": "Dynamic",
  "show_title_field_in_link": 1,
  "sort_field": "modified",
  "sort_order": "DESC",

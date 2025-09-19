@@ -1,5 +1,6 @@
 {
  "actions": [],
+ "autoname": "format:QQ-{DD}{MM}{YY}-{#####}",
  "creation": "2021-06-07 10:48:57.994714",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -8,14 +9,24 @@
   "question",
   "column_break_qcpo",
   "marks",
+  "section_break_oemr",
+  "question_type",
+  "points",
+  "is_required",
   "section_break_huup",
-  "question_detail",
-  "type"
+  "correct_answer",
+  "optiona_a",
+  "option_b",
+  "option_c",
+  "option_d",
+  "section_break_anam",
+  "explanation"
  ],
  "fields": [
   {
+   "default": "0",
    "fieldname": "question",
-   "fieldtype": "Link",
+   "fieldtype": "Check",
    "in_list_view": 1,
    "label": "Question",
    "options": "LMS Question",
@@ -31,14 +42,6 @@
    "reqd": 1
   },
   {
-   "fetch_from": "question.question",
-   "fieldname": "question_detail",
-   "fieldtype": "Text",
-   "in_list_view": 1,
-   "label": "Question Detail",
-   "read_only": 1
-  },
-  {
    "fieldname": "column_break_qcpo",
    "fieldtype": "Column Break"
   },
@@ -47,24 +50,76 @@
    "fieldtype": "Section Break"
   },
   {
-   "fetch_from": "question.type",
-   "fieldname": "type",
+   "fieldname": "section_break_oemr",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "question_type",
    "fieldtype": "Select",
+   "label": "Question Type",
+   "options": "Multiple Choice\nTrue/False\nShort Answer"
+  },
+  {
+   "default": "1",
+   "fieldname": "points",
+   "fieldtype": "Int",
    "in_list_view": 1,
-   "label": "Type",
-   "options": "Choices\nUser Input\nOpen Ended",
-   "read_only": 1
+   "label": "Points",
+   "width": "60"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_required",
+   "fieldtype": "Check",
+   "label": "Is Required"
+  },
+  {
+   "fieldname": "optiona_a",
+   "fieldtype": "Data",
+   "label": "Option A"
+  },
+  {
+   "fieldname": "option_b",
+   "fieldtype": "Data",
+   "label": "Option B"
+  },
+  {
+   "fieldname": "option_c",
+   "fieldtype": "Data",
+   "label": "option C"
+  },
+  {
+   "fieldname": "option_d",
+   "fieldtype": "Data",
+   "label": "Option D"
+  },
+  {
+   "fieldname": "correct_answer",
+   "fieldtype": "Column Break",
+   "label": "Correct Answer",
+   "options": "A\nB\nC\nD\nTrue\nFalse"
+  },
+  {
+   "fieldname": "section_break_anam",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "explanation",
+   "fieldtype": "Text",
+   "label": "Explanation"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2024-10-07 15:01:38.800906",
+ "modified": "2025-09-17 11:44:54.385823",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Quiz Question",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [],
+ "row_format": "Dynamic",
  "sort_field": "modified",
  "sort_order": "DESC",
  "states": [],

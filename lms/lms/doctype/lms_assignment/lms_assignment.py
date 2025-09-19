@@ -24,3 +24,34 @@ def save_assignment(assignment, title, type, question):
 	doc.update({"title": title, "type": type, "question": question})
 	doc.save(ignore_permissions=True)
 	return doc.name
+
+
+@frappe.whitelist()
+def get_all_student_assignment(user, limit=None):
+	"""
+	Fetch all assignments where a given student is in the recipient list.
+	"""
+
+	# Step 1: Find all LMS Assignment IDs linked to this student
+	student_links = frappe.get_all(
+		"PL Students",
+		filters={"students": user},  # filter by student email
+		fields=["parent"],  # parent points to LMS Assignment
+	)
+
+	# Extract assignment IDs
+	assignment_ids = [s.parent for s in student_links]
+
+	if not assignment_ids:
+		return []
+
+	# Step 2: Fetch the assignments
+	user_assignments = frappe.get_all(
+		"LMS Assignment",
+		filters={"name": ["in", assignment_ids]},
+		fields=["*"],  # you can select only needed fields if required
+		limit=limit,
+		order_by="creation desc",
+	)
+
+	return {"success": True, "data": user_assignments, "count": len(user_assignments)}

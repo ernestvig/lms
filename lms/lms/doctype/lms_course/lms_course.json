@@ -9,6 +9,7 @@
  ],
  "allow_import": 1,
  "allow_rename": 1,
+ "autoname": "format:CS-{DD}{MM}{YY}-{#####}",
  "creation": "2022-02-22 15:28:26.091549",
  "doctype": "DocType",
  "editable_grid": 1,
@@ -27,14 +28,17 @@
   "section_break_7",
   "published",
   "published_on",
+  "draft",
   "column_break_10",
   "upcoming",
   "featured",
   "disable_self_learning",
   "section_break_18",
   "short_introduction",
+  "requirement",
   "column_break_viqw",
   "description",
+  "objectives",
   "section_break_gglp",
   "chapters",
   "related_courses",
@@ -52,7 +56,12 @@
   "statistics_section",
   "enrollments",
   "lessons",
-  "rating"
+  "rating",
+  "education_level",
+  "course_language",
+  "subject",
+  "modules",
+  "video"
  ],
  "fields": [
   {
@@ -267,6 +276,12 @@
    "label": "Paid Certificate"
   },
   {
+   "fieldname": "modules",
+   "fieldtype": "Table",
+   "label": "Modules",
+   "options": "LMS Course Module Content"
+  },
+  {
    "depends_on": "paid_certificate",
    "fieldname": "evaluator",
    "fieldtype": "Link",
@@ -278,6 +293,45 @@
    "fieldtype": "Select",
    "label": "Color",
    "options": "Red\nBlue\nGreen\nAmber\nCyan\nOrange\nPink\nPurple\nTeal\nViolet\nYellow\nGray"
+  },
+  {
+   "fieldname": "education_level",
+   "fieldtype": "Link",
+   "label": "Education Level",
+   "options": "LMS Course Levels"
+  },
+  {
+   "fieldname": "course_language",
+   "fieldtype": "Select",
+   "label": "Course Language",
+   "options": "English\nTwi\nFrench\nGa"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "Subject"
+  },
+  {
+   "default": "1",
+   "fieldname": "draft",
+   "fieldtype": "Check",
+   "label": "Draft"
+  },
+  {
+   "fieldname": "video",
+   "fieldtype": "Attach",
+   "label": "Introduction video"
+  },
+  {
+   "fieldname": "requirement",
+   "fieldtype": "Text",
+   "label": "Requirements"
+  },
+  {
+   "fieldname": "objectives",
+   "fieldtype": "Text",
+   "label": "Objectives"
   }
  ],
  "is_published_field": "published",
@@ -296,10 +350,11 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-07-25 17:50:44.983391",
- "modified_by": "sayali@frappe.io",
+ "modified": "2025-09-18 12:42:02.747270",
+ "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
+ "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [
   {
@@ -335,6 +390,42 @@
    "read": 1,
    "report": 1,
    "role": "Moderator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "LMS Student",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Parent",
    "share": 1,
    "write": 1
   }
