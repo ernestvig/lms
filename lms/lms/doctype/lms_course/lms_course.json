@@ -107,7 +107,7 @@
   },
   {
    "fieldname": "image",
-   "fieldtype": "Attach Image",
+   "fieldtype": "Data",
    "label": "Preview Image"
   },
   {
@@ -277,9 +277,9 @@
   },
   {
    "fieldname": "modules",
-   "fieldtype": "Table",
+   "fieldtype": "Table MultiSelect",
    "label": "Modules",
-   "options": "LMS Course Module Content"
+   "options": "Course Module"
   },
   {
    "depends_on": "paid_certificate",
@@ -320,7 +320,7 @@
   },
   {
    "fieldname": "video",
-   "fieldtype": "Attach",
+   "fieldtype": "Data",
    "label": "Introduction video"
   },
   {
@@ -350,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-18 12:42:02.747270",
+ "modified": "2025-09-20 00:37:43.158348",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
@@ -426,6 +426,18 @@
    "read": 1,
    "report": 1,
    "role": "Parent",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Administrator",
    "share": 1,
    "write": 1
   }
