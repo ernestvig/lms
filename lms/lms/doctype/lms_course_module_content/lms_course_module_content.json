@@ -84,7 +84,7 @@
   },
   {
    "fieldname": "video_content",
-   "fieldtype": "Data",
+   "fieldtype": "Attach",
    "label": "Video Content"
   },
   {
@@ -107,7 +107,7 @@
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-20 00:38:10.882742",
+ "modified": "2025-09-21 18:38:28.613453",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course Module Content",

@@ -107,7 +107,7 @@
   },
   {
    "fieldname": "image",
-   "fieldtype": "Data",
+   "fieldtype": "Attach Image",
    "label": "Preview Image"
   },
   {
@@ -320,7 +320,7 @@
   },
   {
    "fieldname": "video",
-   "fieldtype": "Data",
+   "fieldtype": "Attach",
    "label": "Introduction video"
   },
   {
@@ -350,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-20 00:37:43.158348",
+ "modified": "2025-09-21 18:51:09.941992",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",

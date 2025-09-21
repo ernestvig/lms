@@ -1,5 +1,6 @@
 # Copyright (c) 2021, FOSS United and contributors
 # For license information, please see license.txt
+from dataclasses import fields
 
 import frappe
 from frappe import _
@@ -104,3 +105,24 @@ def update_current_membership(batch, course, member):
 	current_membership = frappe.get_all("LMS Enrollment", {"batch_old": batch, "member": member})
 	if len(current_membership):
 		frappe.db.set_value("LMS Enrollment", current_membership[0].name, "is_current", 1)
+
+
+@frappe.whitelist(allow_guest=True)
+def get_student_enrollments(student=None, limit=None, start=0):
+	student = student or frappe.session.user
+	if not student:
+		return {"success": False, "message": "Student not found"}
+
+	filters = {"member": student, "member_type": "Student"}
+	total_count = frappe.db.count("LMS Enrollment", filters)
+
+	enrollments = frappe.get_all(
+		"LMS Enrollment",
+		filters=filters,
+		fields=["*"],
+		limit=limit,
+		start=start,
+		order_by="creation desc",
+	)
+
+	return {"success": True, "data": enrollments, "count": total_count}
