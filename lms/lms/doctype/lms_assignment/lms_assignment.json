@@ -23,7 +23,10 @@
   "due_date",
   "status",
   "feedback",
-  "correction"
+  "correction",
+  "quiz_questions",
+  "submitted",
+  "drafted"
  ],
  "fields": [
   {
@@ -119,11 +122,29 @@
    "fieldtype": "Link",
    "label": "Subject",
    "options": "Subject"
+  },
+  {
+   "fieldname": "quiz_questions",
+   "fieldtype": "Table",
+   "label": "Quiz questions",
+   "options": "LMS Quiz Question"
+  },
+  {
+   "default": "0",
+   "fieldname": "submitted",
+   "fieldtype": "Check",
+   "label": "Submitted"
+  },
+  {
+   "default": "1",
+   "fieldname": "drafted",
+   "fieldtype": "Check",
+   "label": "Drafted"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-18 16:25:57.291330",
+ "modified": "2025-09-22 13:04:46.379330",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",

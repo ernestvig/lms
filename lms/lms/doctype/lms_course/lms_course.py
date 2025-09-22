@@ -10,6 +10,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import cint, today
+from private_learn_api.utils.reponse import paginated_response
 
 from lms.lms.utils import get_chapters
 
@@ -430,6 +431,43 @@ def create_course():
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Create Course Failed")
 		return {"error": str(e)}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_published_courses(limit=10, page=1):
+	limit = int(limit)
+	page = int(page)
+	offset = (page - 1) * limit
+
+	total_courses = frappe.db.count("LMS Course", {"published": 1})
+	total_pages = (total_courses + limit - 1) // limit
+
+	course_names = frappe.get_all(
+		"LMS Course",
+		filters={"published": 1},
+		fields=["name"],
+		limit=limit,
+		start=offset,
+		order_by="modified desc",
+	)
+
+	courses = [serialize_course(c["name"]) for c in course_names]
+
+	return paginated_response(courses, page, total_pages, total_courses)
+
+
+@frappe.whitelist()
+# Get Tutor Enrolled Courses and Count
+def get_tutor_enrolled_courses(tutor):
+	# Get all unique course names where the tutor is enrolled as a student
+	course_names = frappe.get_all(
+		"LMS Enrollment", filters={"member": tutor, "member_type": "Student"}, distinct=True, pluck="course"
+	)
+
+	# Fetch detailed course information for each course name
+	courses = [serialize_course(course_name) for course_name in course_names]
+
+	return {"success": True, "data": courses, "count": len(courses)}
 
 
 # @frappe.whitelist(allow_guest=True)
