@@ -55,3 +55,21 @@ def get_all_student_assignment(user, limit=None):
 	)
 
 	return {"success": True, "data": user_assignments, "count": len(user_assignments)}
+
+
+@frappe.whitelist()
+def get_all_instructor_assignment(user, limit=None):
+	"""
+	Fetch all assignments created by a given instructor.
+	"""
+
+	# Step 1: Fetch the assignments
+	instructor_assignments = frappe.get_all(
+		"LMS Assignment",
+		filters={"owner": user},
+		fields=["*"],  # you can select only needed fields if required
+		limit=limit,
+		order_by="creation desc",
+	)
+
+	return {"success": True, "data": instructor_assignments, "count": len(instructor_assignments)}
