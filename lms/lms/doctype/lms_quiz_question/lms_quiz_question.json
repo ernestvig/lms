@@ -73,7 +73,7 @@
    "label": "Is Required"
   },
   {
-   "fieldname": "optiona_a",
+   "fieldname": "option_a",
    "fieldtype": "Data",
    "label": "Option A"
   },
@@ -94,7 +94,7 @@
   },
   {
    "fieldname": "correct_answer",
-   "fieldtype": "Column Break",
+   "fieldtype": "Select",
    "label": "Correct Answer",
    "options": "A\nB\nC\nD\nTrue\nFalse"
   },

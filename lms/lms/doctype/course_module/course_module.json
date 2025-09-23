@@ -6,21 +6,16 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "modules"
+  "module_content"
  ],
  "fields": [
   {
-   "fieldname": "modules",
-   "fieldtype": "Link",
-   "label": "Modules",
-   "options": "LMS Course Module Content"
-  }
+  "fieldname": "module_content",
+  "fieldtype": "Table",
+  "label": "Module Content",
+  "options": "LMS Course Module Content"
+}
  ],
- "grid_page_length": 50,
- "index_web_pages_for_search": 1,
- "istable": 1,
- "links": [],
- "modified": "2025-09-19 15:58:13.034585",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "Course Module",
