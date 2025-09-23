@@ -60,7 +60,7 @@
   "education_level",
   "course_language",
   "subject",
-  "modules",
+  "module_content",
   "video"
  ],
  "fields": [
@@ -276,12 +276,6 @@
    "label": "Paid Certificate"
   },
   {
-   "fieldname": "modules",
-   "fieldtype": "Table MultiSelect",
-   "label": "Modules",
-   "options": "Course Module"
-  },
-  {
    "depends_on": "paid_certificate",
    "fieldname": "evaluator",
    "fieldtype": "Link",
@@ -332,6 +326,12 @@
    "fieldname": "objectives",
    "fieldtype": "Text",
    "label": "Objectives"
+  },
+  {
+   "fieldname": "module_content",
+   "fieldtype": "Table",
+   "label": "Module Content",
+   "options": "LMS Course Module Content"
   }
  ],
  "is_published_field": "published",
@@ -350,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-21 18:51:09.941992",
+ "modified": "2025-09-23 11:25:57.103999",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",

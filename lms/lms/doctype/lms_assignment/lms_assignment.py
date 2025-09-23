@@ -27,7 +27,7 @@ def save_assignment(assignment, title, type, question):
 
 
 @frappe.whitelist()
-def get_all_student_assignment(user, limit=None):
+def get_all_student_assignment(user, limit=None, **kwargs):
 	"""
 	Fetch all assignments where a given student is in the recipient list.
 	"""
@@ -35,8 +35,8 @@ def get_all_student_assignment(user, limit=None):
 	# Step 1: Find all LMS Assignment IDs linked to this student
 	student_links = frappe.get_all(
 		"PL Students",
-		filters={"students": user},  # filter by student email
-		fields=["parent"],  # parent points to LMS Assignment
+		filters={"students": user},
+		fields=["parent"],
 	)
 
 	# Extract assignment IDs
@@ -46,28 +46,31 @@ def get_all_student_assignment(user, limit=None):
 		return []
 
 	# Step 2: Fetch the assignments
+	filters = {"name": ["in", assignment_ids]}
+	filters.update(kwargs)
 	user_assignments = frappe.get_all(
 		"LMS Assignment",
-		filters={"name": ["in", assignment_ids]},
-		fields=["*"],  # you can select only needed fields if required
+		filters=filters,
+		fields=["*"],
 		limit=limit,
 		order_by="creation desc",
 	)
 
 	return {"success": True, "data": user_assignments, "count": len(user_assignments)}
 
-
 @frappe.whitelist()
-def get_all_instructor_assignment(user, limit=None):
+def get_all_instructor_assignment(user, limit=None, **kwargs):
 	"""
 	Fetch all assignments created by a given instructor.
 	"""
 
 	# Step 1: Fetch the assignments
+	filters = {"owner": user}
+	filters.update(kwargs)
 	instructor_assignments = frappe.get_all(
 		"LMS Assignment",
-		filters={"owner": user},
-		fields=["*"],  # you can select only needed fields if required
+		filters=filters,
+		fields=["*"],
 		limit=limit,
 		order_by="creation desc",
 	)
