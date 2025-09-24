@@ -51,7 +51,7 @@ class LMSCourse(Document):
 
     def validate_status(self):
         if self.published:
-            self.status = "Approved"
+            self.status = "On going"
 
     def validate_payments_app(self):
         if self.paid_course:
@@ -510,139 +510,45 @@ def get_published_courses(limit=10, page=1):
 
 # Get Tutor Enrolled Courses and Count
 @frappe.whitelist()
-def get_tutor_courses_with_enrollments(tutor):
-    # Get all courses where the tutor is an instructor and at least one student is enrolled
-    course_names = frappe.get_all(
-        "Course Instructor", filters={"instructor": tutor}, pluck="parent"
-    )
+def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
+    """
+    Get all courses where the tutor is an instructor and at least one student is enrolled.
+    Optionally filter by course_name and status.
+    """
+    # Step 1: Get all course names where tutor is instructor
+    course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
+
+    # Step 2: Filter by course_name and status if provided
+    course_filters = {}
+    if course_name:
+        course_filters["name"] = course_name
+    if status:
+        course_filters["status"] = status
+
+    if course_filters:
+        filtered_courses = frappe.get_all(
+            "LMS Course", filters=course_filters, fields=["name"]
+        )
+        filtered_course_names = set(c["name"] for c in filtered_courses)
+        course_names = [name for name in course_names if name in filtered_course_names]
 
     courses = []
-    for course_name in course_names:
-        # Check if there are any students enrolled in this course
+    for cname in course_names:
+        # Get enrolled students for this course
         students = frappe.get_all(
             "LMS Enrollment",
-            filters={"course": course_name, "member_type": "Student"},
+            filters={"course": cname, "member_type": "Student"},
             fields=["member"]
         )
         if students:
-            # For each student, try to get their User Profile dict if exists
             enriched_students = []
             for s in students:
                 user_profile = frappe.get_value("User Profile", {"user": s["member"]}, "*", as_dict=True)
-                if user_profile:
-                    enriched_students.append(user_profile)
-                else:
-                    enriched_students.append(s)
-            course_info = serialize_course(course_name)
+                enriched_students.append(user_profile if user_profile else s)
+            course_info = serialize_course(cname)
             course_info["enrolled_students"] = enriched_students
             courses.append(course_info)
 
     return {"success": True, "data": courses, "count": len(courses)}
 
 
-# @frappe.whitelist(allow_guest=True)
-# def generate_presigned_url():
-#     import re
-#     try:
-#         # Parse input
-#         if frappe.request and frappe.request.data:
-#             try:
-#                 data = json.loads(frappe.request.data)
-#             except Exception:
-#                 data = frappe.form_dict
-#         else:
-#             data = frappe.form_dict
-#
-#         # Get and validate required fields
-#         filename = data.get("filename")
-#         folder = data.get("folder")
-#         file_type = data.get("file_type")
-#
-#         # Check if any field is None or empty after stripping
-#         if not filename or not str(filename).strip():
-#             frappe.throw("Missing or empty filename")
-#         if not folder or not str(folder).strip():
-#             frappe.throw("Missing or empty folder")
-#         if not file_type or not str(file_type).strip():
-#             frappe.throw("Missing or empty file_type")
-#
-#         # Convert to strings and strip whitespace
-#         filename = str(filename).strip()
-#         folder = str(folder).strip()
-#         file_type = str(file_type).strip()
-#
-#         # Validate file_type is a valid MIME type
-#         if not re.match(r'^[\w\-\+\.]+/[\w\-\+\.]+$', file_type):
-#             frappe.throw(f"Invalid file_type format: {file_type}")
-#
-#         # DEBUG: Get AWS configuration and log what we find
-#         bucket_name = frappe.conf.get("aws_s3_bucket")
-#         region = frappe.conf.get("aws_region")
-#         aws_access_key_id = frappe.conf.get("aws_access_key_id")
-#         aws_secret_access_key = frappe.conf.get("aws_secret_access_key")
-#
-#         # # DEBUG: Log the configuration values (mask sensitive data)
-#         # frappe.log_error(f"""
-#         # AWS Config Debug:
-#         # - bucket_name: {bucket_name}
-#         # - region: {region}
-#         # - aws_access_key_id: {aws_access_key_id[:10] + '...' if aws_access_key_id else 'None'}
-#         # - aws_secret_access_key: {'[SET]' if aws_secret_access_key else 'None'}
-#         # - All frappe.conf keys: {list(frappe.conf.keys())}
-#         # """, "AWS Config Debug")
-#
-#         # Try alternative configuration keys that might be used
-#         if not bucket_name:
-#             bucket_name = frappe.conf.get("aws_s3_bucket_name")
-#         if not region:
-#             region = frappe.conf.get("aws_default_region")
-#         if not aws_access_key_id:
-#             aws_access_key_id = frappe.conf.get("aws_key") or frappe.conf.get("s3_access_key")
-#         if not aws_secret_access_key:
-#             aws_secret_access_key = frappe.conf.get("aws_secret") or frappe.conf.get("s3_secret_key")
-#
-#         # Validate AWS configuration
-#         missing_configs = []
-#         if not bucket_name:
-#             missing_configs.append("aws_s3_bucket or aws_s3_bucket_name")
-#         if not region:
-#             missing_configs.append("aws_region")
-#         if not aws_access_key_id:
-#             missing_configs.append("aws_access_key_id")
-#         if not aws_secret_access_key:
-#             missing_configs.append("aws_secret_access_key")
-#
-#         if missing_configs:
-#             frappe.throw(f"Missing AWS configuration: {', '.join(missing_configs)}")
-#
-#         # Create S3 client
-#         s3 = boto3.client(
-#             "s3",
-#             aws_access_key_id=aws_access_key_id,
-#             aws_secret_access_key=aws_secret_access_key,
-#             region_name=region,
-#         )
-#
-#         # Construct S3 key
-#         key = f"{folder.rstrip('/')}/{filename.lstrip('/')}"
-#
-#         # Generate presigned POST
-#         presigned = s3.generate_presigned_post(
-#             Bucket=bucket_name,
-#             Key=key,
-#             Fields={"Content-Type": file_type},
-#             Conditions=[
-#                 {"Content-Type": file_type},
-#                 ["starts-with", "$Content-Type", ""]
-#             ],
-#             ExpiresIn=3600
-#         )
-#
-#         # Construct file URL
-#         file_url = f"https://{bucket_name}.s3.{region}.amazonaws.com/{key}"
-#
-#         return {"success": True, "data": presigned, "file_url": file_url}
-#
-#     except Exception as e:
-#         frappe.log_error(frappe.get_traceback(), "Presigned URL Failed")
-#         return {"success": False, "error": str(e)}
