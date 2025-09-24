@@ -10,6 +10,8 @@
  "field_order": [
   "title",
   "question",
+  "file",
+  "resource_link",
   "column_break_hmwv",
   "type",
   "grade_assignment",
@@ -140,11 +142,21 @@
    "fieldname": "drafted",
    "fieldtype": "Check",
    "label": "Drafted"
+  },
+  {
+   "fieldname": "resource_link",
+   "fieldtype": "Data",
+   "label": "Resource Links"
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-22 13:04:46.379330",
+ "modified": "2025-09-24 15:15:51.521900",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",

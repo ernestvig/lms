@@ -70,10 +70,10 @@ def upload_assignment(
 	)
 	assignment_type = assignment_details.type
 
-	if assignment_type in ["URL", "Text"] and not answer:
+	if assignment_type in ["Essay/Written task","Practical task"] and not answer:
 		frappe.throw(_("Please enter the URL for assignment submission."))
 
-	if assignment_type == "File" and not assignment_attachment:
+	if assignment_type == "Video submission" and not assignment_attachment:
 		frappe.throw(_("Please upload the assignment file."))
 
 	if assignment_type == "URL" and not validate_url(answer):
@@ -103,7 +103,10 @@ def upload_assignment(
 		}
 	)
 	doc.save(ignore_permissions=True)
-	return doc.name
+	return {
+		"message": "Assignment submitted successfully.",
+		"submission": doc.name,
+	}
 
 
 @frappe.whitelist()
@@ -126,3 +129,99 @@ def grade_assignment(name, result, comments):
 	doc.status = result
 	doc.comments = comments
 	doc.save(ignore_permissions=True)
+	return {"message": "Assignment graded successfully."}
+
+def after_insert(self):
+	# Auto grade if assignment is quiz
+	assignment_type = frappe.db.get_value("LMS Assignment", self.assignment, "type")
+	if assignment_type == "Quiz/Multiple choice":
+		self.auto_grade_quiz()
+
+def auto_grade_quiz(self):
+	"""
+	Go through quiz_questions from assignment, compare with answers in self.quiz_answers.
+	"""
+	assignment = frappe.get_doc("LMS Assignment", self.assignment)
+	total_score = 0
+
+	for q in assignment.quiz_questions:
+		# find student selected option
+		selected = next((a.selected_option for a in self.quiz_answers if a.question == q.name), None)
+		is_correct = selected and (selected.strip() == q.correct_answer)
+		marks = q.marks if is_correct else 0
+		total_score += marks
+
+		# update / append row
+		self.append("quiz_answers", {
+			"question": q.name,
+			"selected_option": selected or "",
+			"is_correct": is_correct,
+			"marks_awarded": marks
+		})
+
+	# set status automatically if quiz
+	self.status = "Pass" if total_score >= 0 else "Fail"  # adjust threshold
+	self.db_set("comments", f"Auto graded: {total_score} points")
+	self.save(ignore_permissions=True)
+
+import frappe
+from frappe import _
+
+@frappe.whitelist()
+def submit_quiz(assignment, answers):
+    """
+    answers = [{ "question": "QQ-230924-00001", "selected_option": "A" }, ...]
+    """
+    if frappe.session.user == "Guest":
+        frappe.throw(_("Login required"))
+
+    assignment_doc = frappe.get_doc("LMS Assignment", assignment)
+    if assignment_doc.type != "Quiz/Multiple choice":
+        frappe.throw(_("Assignment is not a quiz."))
+
+    # Prevent duplicate submission
+    if frappe.db.exists("LMS Assignment Submission", {
+        "assignment": assignment,
+        "member": frappe.session.user
+    }):
+        frappe.throw(_("You have already submitted this quiz."))
+
+    total_score = 0
+    detailed_answers = []
+
+    for ans in answers:
+        q = frappe.get_doc("LMS Quiz Question", ans["question"])
+        selected = ans.get("selected_option")
+        correct = q.correct_answer
+
+        is_correct = (selected == correct)
+        marks = q.marks if hasattr(q, "marks") else (1 if is_correct else 0)
+
+        detailed_answers.append({
+            "question": q.name,
+            "selected_option": selected,
+            "correct_option": correct,
+            "is_correct": is_correct,
+            "marks_awarded": marks
+        })
+
+        total_score += marks
+
+    # Create submission doc
+    submission = frappe.get_doc({
+        "doctype": "LMS Assignment Submission",
+        "assignment": assignment,
+        "member": frappe.session.user,
+        "type": assignment_doc.type,
+        "status": "Pass" if total_score > 0 else "Fail",
+        "comments": f"Auto-graded score: {total_score}",
+        # store answers as JSON string
+        "answer": frappe.as_json(detailed_answers)
+    })
+    submission.insert(ignore_permissions=True)
+
+    return {
+        "submission": submission.name,
+        "score": total_score,
+        "answers": detailed_answers
+    }
