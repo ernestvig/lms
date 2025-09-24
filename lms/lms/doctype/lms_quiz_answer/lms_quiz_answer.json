@@ -1,0 +1,58 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:QA-{DD}{MM}{YY}-{#####}",
+ "creation": "2025-09-24 12:16:28.450762",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "question",
+  "selected_option",
+  "is_correct",
+  "marks_awarded"
+ ],
+ "fields": [
+  {
+   "fieldname": "question",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Question",
+   "options": "LMS Quiz Question"
+  },
+  {
+   "fieldname": "selected_option",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Selected Option"
+  },
+  {
+   "default": "0",
+   "fieldname": "is_correct",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Is Correct"
+  },
+  {
+   "fieldname": "marks_awarded",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Marks Awarded"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2025-09-24 12:23:18.357237",
+ "modified_by": "Administrator",
+ "module": "LMS",
+ "name": "LMS Quiz Answer",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
