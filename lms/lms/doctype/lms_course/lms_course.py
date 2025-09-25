@@ -223,43 +223,50 @@ def reindex_exercises(doc):
 
 @frappe.whitelist(allow_guest=True)
 def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None):
-    """Get all courses for a given instructor"""
+	"""Get all courses for a given instructor using serialize_course structure"""
 
-    fields = ["*"]
+	filters = {}
+	if published is not None:
+		filters["published"] = cint(published)
+	if is_draft is not None:
+		filters["draft"] = cint(is_draft)
 
-    filters = {"host_user": tutor}
-    if published:
-        filters["published"] = published
-    if is_draft:
-        filters["is_drafted"] = is_draft
+	limit = int(limit) if limit else 100
 
-    limit = int(limit) if limit else 100
+	# Step 1: Get all course names linked to instructor
+	course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
 
-    # Step 1: Get all course names linked to instructor
-    course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
+	if not course_names:
+		return {"success": True, "data": [], "count": 0}
 
-    if not course_names:
-        return []
+	# Step 2: Get courses with additional filters
+	course_filters = {"name": ["in", course_names]}
+	course_filters.update(filters)
+	courses = frappe.get_all(
+		"LMS Course",
+		filters=course_filters,
+		fields=["name"],
+		limit=limit,
+		order_by="modified desc",
+	)
 
-    # Step 2: Get courses
-    courses = frappe.get_list(
-        "LMS Course",
-        filters={"name": ["in", course_names]},
-        fields=fields,
-        limit=limit,
-        order_by="modified desc",
-    )
+	# Step 3: Serialize each course
+	serialized_courses = [serialize_course(c["name"]) for c in courses]
 
-    profile_data = {}
-    if frappe.db.exists("User Profile", {"user": tutor}):
-        profile_doc = frappe.get_doc("User Profile", {"user": tutor})
-        profile_data = profile_doc.as_dict()
+	# Step 4: Add instructor profile data
+	profile_data = {}
+	if frappe.db.exists("User Profile", {"user": tutor}):
+		profile_doc = frappe.get_doc("User Profile", {"user": tutor})
+		profile_data = profile_doc.as_dict()
 
-    return {
-        "success": True,
-        "data": [{**course, "profile": profile_data} for course in courses],
-        "count": len(courses),
-    }
+	for course in serialized_courses:
+		course["instructor_profile"] = profile_data
+
+	return {
+		"success": True,
+		"data": serialized_courses,
+		"count": len(serialized_courses),
+	}
 
 
 @frappe.whitelist(allow_guest=True)
@@ -273,48 +280,111 @@ def get_all_courses(limit=None,**kwargs):
 
     return {"success": True, "data": courses, "count": len(courses)}
 
-
 def serialize_course(course_name):
-    """Return a fully-hydrated course with profile, modules, and content"""
-    course = frappe.get_doc("LMS Course", course_name)
-    course_dict = course.as_dict()
+	"""Return a structured course with profile, modules, and content"""
+	course = frappe.get_doc("LMS Course", course_name)
 
-    # Instructor
-    instructors = frappe.get_all("Course Instructor", filters={"parent": course.name}, fields=["instructor"])
-    if instructors:
-        profile_data = (
-            frappe.get_value("User Profile", {"user": instructors[0]["instructor"]}, "*", as_dict=True) or {}
-        )
-        course_dict["instructor_profile"] = profile_data
-    else:
-        course_dict["instructor_profile"] = {}  # Fixed typo: was "intructor_profile"
+	# Instructor(s)
+	instructors = frappe.get_all(
+		"Course Instructor",
+		filters={"parent": course.name},
+		fields=["instructor"]
+	)
+	instructor_profiles = []
+	for inst in instructors:
+		profile_data = frappe.get_value("User Profile", {"user": inst["instructor"]}, "*", as_dict=True)
+		if profile_data:
+			user_doc = frappe.get_doc("User", profile_data["user"])
+			instructor_profiles.append({
+				"id": profile_data.name,
+				"full_name": user_doc.full_name,
+				"email": user_doc.email,
+				"phone_number": profile_data.phone_number,
+				"profile_image_url": user_doc.user_image,
+				"bio": profile_data.bio,
+				"rating": profile_data.rating,
+				"experience_years": profile_data.teaching_experience,
+				"subjects": json.loads(profile_data.subjects) if profile_data.subjects else [],
+			})
 
-    # Process module_content (not modules)
-    for module_content in course_dict.get("module_content", []):
-        # Get full module content details
-        content = frappe.get_value(
-            "LMS Course Module Content",
-            {"name": module_content["name"]},
-            "*",
-            as_dict=True
-        ) or {}
+	# Reviews
+	reviews = frappe.get_all(
+		"LMS Course Review",
+		{"course": course.name},
+		["name", "rating", "review", "owner", "creation"]
+	)
+	reviews_list = []
+	for r in reviews:
+		reviewer_name = frappe.get_value("User Profile", {"user": r.owner}, "parent_full_name")
+		reviews_list.append({
+			"id": r.name,
+			"reviewer_name": reviewer_name,
+			"rating": r.rating,
+			"comment": r.review,
+			"date": r.creation
+		})
 
-        # If this is a quiz, get the quiz questions
-        if content.get("content_type") == "Quiz":
-            questions = frappe.get_all(
-                "LMS Quiz Question",
-                filters={
-                    "parent": content["name"],
-                    "parenttype": "LMS Course Module Content"
-                },
-                fields=["*"]
-            )
-            content["quiz_questions"] = questions
+	# Modules & Content
+	modules_list = []
+	for module_content in course.module_content:
+		content = frappe.get_doc("LMS Course Module Content", module_content.name).as_dict()
 
-        # Update the module_content with full details
-        module_content.update(content)
+		quiz_questions = []
+		if content.get("content_type") == "Quiz":
+			quiz_questions = frappe.get_all(
+				"LMS Quiz Question",
+				filters={
+					"parent": content["name"],
+					"parenttype": "LMS Course Module Content"
+				},
+				fields=["name", "question", "question_type", "option_a", "option_b", "option_c", "option_d", "correct_answer", "marks"]
+			)
 
-    return course_dict
+		modules_list.append({
+			"id": content.get("name"),
+			"module_name": content.get("module_name"),
+			"content_type": content.get("content_type"),
+			"essay": {
+				"title": content.get("essay_title"),
+				"content": content.get("essay_content")
+			} if content.get("content_type") == "Essay" else None,
+			"video": {
+				"title": content.get("video_title"),
+				"description": content.get("video_description"),
+				"url": content.get("video_content")
+			} if content.get("content_type") == "Video" else None,
+			"quiz": {
+				"title": content.get("quiz_title"),
+				"description": content.get("quiz_description"),
+				"questions": quiz_questions
+			} if content.get("content_type") == "Quiz" else None
+		})
+
+	# Final Structured Response
+	return {
+		"id": course.name,
+		"title": course.title,
+		"tags": course.tags,
+		"status": course.status,
+		"image": course.image,
+		"published": course.published,
+		"published_on": course.published_on,
+		"featured": course.featured,
+		"short_introduction": course.short_introduction,
+		"description": course.description,
+		"requirement": course.requirement,
+		"course_language": course.course_language,
+		"education_level": course.education_level,
+		"subject": course.subject,
+		"price": course.course_price,
+		"currency": course.currency,
+		"rating": course.rating,
+		"enrollments": course.enrollments,
+		"instructors": instructor_profiles,
+		"reviews": reviews_list,
+		"modules": modules_list
+	}
+
 
 @frappe.whitelist(allow_guest=True)
 def get_course_detail(course_name):
