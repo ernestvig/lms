@@ -17,12 +17,47 @@ class LMSCourseReview(Document):
 
 @frappe.whitelist()
 def submit_review(rating, review, course):
+	from frappe.utils import cint
+
+	# max rating value (default 5)
 	out_of_ratings = frappe.db.get_all(
 		"DocField", {"parent": "LMS Course Review", "fieldtype": "Rating"}, ["options"]
 	)
-	out_of_ratings = (len(out_of_ratings) and out_of_ratings[0].options) or 5
-	rating = cint(rating) / out_of_ratings
-	frappe.get_doc(
-		{"doctype": "LMS Course Review", "rating": rating, "review": review, "course": course}
-	).save(ignore_permissions=True)
-	return "OK"
+	out_of_ratings = (len(out_of_ratings) and cint(out_of_ratings[0].options)) or 5
+
+	# create review
+	rating = cint(rating)
+	review_doc = frappe.get_doc({
+		"doctype": "LMS Course Review",
+		"rating": rating,
+		"review": review,
+		"course": course
+	})
+	review_doc.save(ignore_permissions=True)
+
+	# recalc average rating
+	all_reviews = frappe.get_all(
+		"LMS Course Review",
+		filters={"course": course},
+		fields=["rating"]
+	)
+	avg_rating = 0
+	if all_reviews:
+		avg_rating = sum([r["rating"] for r in all_reviews]) / len(all_reviews)
+		frappe.db.set_value("LMS Course", course, "rating", avg_rating)
+
+	return {
+		"status": "OK",
+		"message": "Review submitted successfully",
+		"data": {
+			"out_of_ratings": out_of_ratings,
+			"average_rating": avg_rating,
+			"total_reviews": len(all_reviews),
+			"your_review": {
+				"rating": rating,
+				"review": review,
+				"owner": frappe.db.get_value("User Profile", {"user": review_doc.owner}, "parent_full_name"),
+				"creation": review_doc.creation,
+			},
+		},
+	}
