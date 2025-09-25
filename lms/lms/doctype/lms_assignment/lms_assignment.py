@@ -58,6 +58,7 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 
 	return {"success": True, "data": user_assignments, "count": len(user_assignments)}
 
+
 @frappe.whitelist()
 def get_all_instructor_assignment(user, limit=None, **kwargs):
 	"""
