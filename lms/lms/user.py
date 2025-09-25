@@ -20,7 +20,7 @@ def validate_username_duplicates(doc, method):
 
 
 def after_insert(doc, method):
-	pass # doc.add_roles("LMS Student")
+	doc.add_roles("LMS Student")
 
 
 @frappe.whitelist(allow_guest=True)

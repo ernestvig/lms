@@ -17,7 +17,6 @@ class LMSCourseReview(Document):
 
 @frappe.whitelist()
 def submit_review(rating, review, course):
-	from frappe.utils import cint
 
 	# max rating value (default 5)
 	out_of_ratings = frappe.db.get_all(
@@ -27,20 +26,13 @@ def submit_review(rating, review, course):
 
 	# create review
 	rating = cint(rating)
-	review_doc = frappe.get_doc({
-		"doctype": "LMS Course Review",
-		"rating": rating,
-		"review": review,
-		"course": course
-	})
+	review_doc = frappe.get_doc(
+		{"doctype": "LMS Course Review", "rating": rating, "review": review, "course": course}
+	)
 	review_doc.save(ignore_permissions=True)
 
 	# recalc average rating
-	all_reviews = frappe.get_all(
-		"LMS Course Review",
-		filters={"course": course},
-		fields=["rating"]
-	)
+	all_reviews = frappe.get_all("LMS Course Review", filters={"course": course}, fields=["rating"])
 	avg_rating = 0
 	if all_reviews:
 		avg_rating = sum([r["rating"] for r in all_reviews]) / len(all_reviews)

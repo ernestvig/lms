@@ -223,167 +223,180 @@ def reindex_exercises(doc):
 
 @frappe.whitelist(allow_guest=True)
 def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None):
-	"""Get all courses for a given instructor using serialize_course structure"""
+    """Get all courses for a given instructor using serialize_course structure"""
 
-	filters = {}
-	if published is not None:
-		filters["published"] = cint(published)
-	if is_draft is not None:
-		filters["draft"] = cint(is_draft)
+    filters = {}
+    if published is not None:
+        filters["published"] = cint(published)
+    if is_draft is not None:
+        filters["draft"] = cint(is_draft)
 
-	limit = int(limit) if limit else 100
+    limit = int(limit) if limit else 100
 
-	# Step 1: Get all course names linked to instructor
-	course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
+    # Step 1: Get all course names linked to instructor
+    course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
 
-	if not course_names:
-		return {"success": True, "data": [], "count": 0}
+    if not course_names:
+        return {"success": True, "data": [], "count": 0}
 
-	# Step 2: Get courses with additional filters
-	course_filters = {"name": ["in", course_names]}
-	course_filters.update(filters)
-	courses = frappe.get_all(
-		"LMS Course",
-		filters=course_filters,
-		fields=["name"],
-		limit=limit,
-		order_by="modified desc",
-	)
+    # Step 2: Get courses with additional filters
+    course_filters = {"name": ["in", course_names]}
+    course_filters.update(filters)
+    courses = frappe.get_all(
+        "LMS Course",
+        filters=course_filters,
+        fields=["name"],
+        limit=limit,
+        order_by="modified desc",
+    )
 
-	# Step 3: Serialize each course
-	serialized_courses = [serialize_course(c["name"]) for c in courses]
+    # Step 3: Serialize each course
+    serialized_courses = [serialize_course(c["name"]) for c in courses]
 
-	# Step 4: Add instructor profile data
-	profile_data = {}
-	if frappe.db.exists("User Profile", {"user": tutor}):
-		profile_doc = frappe.get_doc("User Profile", {"user": tutor})
-		profile_data = profile_doc.as_dict()
+    # Step 4: Add instructor profile data
+    profile_data = {}
+    if frappe.db.exists("User Profile", {"user": tutor}):
+        profile_doc = frappe.get_doc("User Profile", {"user": tutor})
+        profile_data = profile_doc.as_dict()
 
-	for course in serialized_courses:
-		course["instructor_profile"] = profile_data
+    for course in serialized_courses:
+        course["instructor_profile"] = profile_data
 
-	return {
-		"success": True,
-		"data": serialized_courses,
-		"count": len(serialized_courses),
-	}
+    return {
+        "success": True,
+        "data": serialized_courses,
+        "count": len(serialized_courses),
+    }
 
 
 @frappe.whitelist(allow_guest=True)
-def get_all_courses(limit=None,**kwargs):
+def get_all_courses(limit=None, **kwargs):
     limit = int(limit) if limit else 100
     filters = {}
     filters.update(kwargs)
-    course_names = frappe.get_all("LMS Course", fields=["name"], filters=filters, limit=limit, order_by="creation desc")
+    course_names = frappe.get_all(
+        "LMS Course", fields=["name"], filters=filters, limit=limit, order_by="creation desc"
+    )
 
     courses = [serialize_course(c["name"]) for c in course_names]
 
     return {"success": True, "data": courses, "count": len(courses)}
 
+
 def serialize_course(course_name):
-	"""Return a structured course with profile, modules, and content"""
-	course = frappe.get_doc("LMS Course", course_name)
+    """Return a structured course with profile, modules, and content"""
+    course = frappe.get_doc("LMS Course", course_name)
 
-	# Instructor(s)
-	instructors = frappe.get_all(
-		"Course Instructor",
-		filters={"parent": course.name},
-		fields=["instructor"]
-	)
-	instructor_profiles = []
-	for inst in instructors:
-		profile_data = frappe.get_value("User Profile", {"user": inst["instructor"]}, "*", as_dict=True)
-		if profile_data:
-			user_doc = frappe.get_doc("User", profile_data["user"])
-			instructor_profiles.append({
-				"id": profile_data.name,
-				"full_name": user_doc.full_name,
-				"email": user_doc.email,
-				"phone_number": profile_data.phone_number,
-				"profile_image_url": user_doc.user_image,
-				"bio": profile_data.bio,
-				"rating": profile_data.rating,
-				"experience_years": profile_data.teaching_experience,
-				"subjects": json.loads(profile_data.subjects) if profile_data.subjects else [],
-			})
+    # Instructor(s)
+    instructors = frappe.get_all("Course Instructor", filters={"parent": course.name}, fields=["instructor"])
+    instructor_profiles = []
+    for inst in instructors:
+        profile_data = frappe.get_value("User Profile", {"user": inst["instructor"]}, "*", as_dict=True)
+        if profile_data:
+            user_doc = frappe.get_doc("User", profile_data["user"])
+            instructor_profiles.append(
+                {
+                    "id": profile_data.name,
+                    "full_name": user_doc.full_name,
+                    "email": user_doc.email,
+                    "phone_number": profile_data.phone_number,
+                    "profile_image_url": user_doc.user_image,
+                    "bio": profile_data.bio,
+                    "rating": profile_data.rating,
+                    "experience_years": profile_data.teaching_experience,
+                    "subjects": json.loads(profile_data.subjects) if profile_data.subjects else [],
+                }
+            )
 
-	# Reviews
-	reviews = frappe.get_all(
-		"LMS Course Review",
-		{"course": course.name},
-		["name", "rating", "review", "owner", "creation"]
-	)
-	reviews_list = []
-	for r in reviews:
-		reviewer_name = frappe.get_value("User Profile", {"user": r.owner}, "parent_full_name")
-		reviews_list.append({
-			"id": r.name,
-			"reviewer_name": reviewer_name,
-			"rating": r.rating,
-			"comment": r.review,
-			"date": r.creation
-		})
+    # Reviews
+    reviews = frappe.get_all(
+        "LMS Course Review", {"course": course.name}, ["name", "rating", "review", "owner", "creation"]
+    )
+    reviews_list = []
+    for r in reviews:
+        reviewer_name = frappe.get_value("User Profile", {"user": r.owner}, "parent_full_name")
+        reviews_list.append(
+            {
+                "id": r.name,
+                "reviewer_name": reviewer_name,
+                "rating": r.rating,
+                "comment": r.review,
+                "date": r.creation,
+            }
+        )
 
-	# Modules & Content
-	modules_list = []
-	for module_content in course.module_content:
-		content = frappe.get_doc("LMS Course Module Content", module_content.name).as_dict()
+    # Modules & Content
+    modules_list = []
+    for module_content in course.module_content:
+        content = frappe.get_doc("LMS Course Module Content", module_content.name).as_dict()
 
-		quiz_questions = []
-		if content.get("content_type") == "Quiz":
-			quiz_questions = frappe.get_all(
-				"LMS Quiz Question",
-				filters={
-					"parent": content["name"],
-					"parenttype": "LMS Course Module Content"
-				},
-				fields=["name", "question", "question_type", "option_a", "option_b", "option_c", "option_d", "correct_answer", "marks"]
-			)
+        quiz_questions = []
+        if content.get("content_type") == "Quiz":
+            quiz_questions = frappe.get_all(
+                "LMS Quiz Question",
+                filters={"parent": content["name"], "parenttype": "LMS Course Module Content"},
+                fields=[
+                    "name",
+                    "question",
+                    "question_type",
+                    "option_a",
+                    "option_b",
+                    "option_c",
+                    "option_d",
+                    "correct_answer",
+                    "marks",
+                ],
+            )
 
-		modules_list.append({
-			"id": content.get("name"),
-			"module_name": content.get("module_name"),
-			"content_type": content.get("content_type"),
-			"essay": {
-				"title": content.get("essay_title"),
-				"content": content.get("essay_content")
-			} if content.get("content_type") == "Essay" else None,
-			"video": {
-				"title": content.get("video_title"),
-				"description": content.get("video_description"),
-				"url": content.get("video_content")
-			} if content.get("content_type") == "Video" else None,
-			"quiz": {
-				"title": content.get("quiz_title"),
-				"description": content.get("quiz_description"),
-				"questions": quiz_questions
-			} if content.get("content_type") == "Quiz" else None
-		})
+        modules_list.append(
+            {
+                "id": content.get("name"),
+                "module_name": content.get("module_name"),
+                "content_type": content.get("content_type"),
+                "essay": {"title": content.get("essay_title"), "content": content.get("essay_content")}
+                if content.get("content_type") == "Essay"
+                else None,
+                "video": {
+                    "title": content.get("video_title"),
+                    "description": content.get("video_description"),
+                    "url": content.get("video_content"),
+                }
+                if content.get("content_type") == "Video"
+                else None,
+                "quiz": {
+                    "title": content.get("quiz_title"),
+                    "description": content.get("quiz_description"),
+                    "questions": quiz_questions,
+                }
+                if content.get("content_type") == "Quiz"
+                else None,
+            }
+        )
 
-	# Final Structured Response
-	return {
-		"id": course.name,
-		"title": course.title,
-		"tags": course.tags,
-		"status": course.status,
-		"image": course.image,
-		"published": course.published,
-		"published_on": course.published_on,
-		"featured": course.featured,
-		"short_introduction": course.short_introduction,
-		"description": course.description,
-		"requirement": course.requirement,
-		"course_language": course.course_language,
-		"education_level": course.education_level,
-		"subject": course.subject,
-		"price": course.course_price,
-		"currency": course.currency,
-		"rating": course.rating,
-		"enrollments": course.enrollments,
-		"instructors": instructor_profiles,
-		"reviews": reviews_list,
-		"modules": modules_list
-	}
+    # Final Structured Response
+    return {
+        "id": course.name,
+        "title": course.title,
+        "tags": course.tags,
+        "status": course.status,
+        "image": course.image,
+        "published": course.published,
+        "published_on": course.published_on,
+        "featured": course.featured,
+        "short_introduction": course.short_introduction,
+        "description": course.description,
+        "requirement": course.requirement,
+        "course_language": course.course_language,
+        "education_level": course.education_level,
+        "subject": course.subject,
+        "price": course.course_price,
+        "currency": course.currency,
+        "rating": course.rating,
+        "enrollments": course.enrollments,
+        "instructors": instructor_profiles,
+        "reviews": reviews_list,
+        "modules": modules_list,
+    }
 
 
 @frappe.whitelist(allow_guest=True)
@@ -463,23 +476,27 @@ def create_course():
         if "content" in data:
             for idx, content_item in enumerate(data["content"]):
                 # Create the module content row without quiz questions first
-                content_row = course_doc.append("module_content", {
-                    "module_name": content_item.get("module_name"),
-                    "content_type": content_item.get("content_type"),
-                    "essay_title": content_item.get("essay_title"),
-                    "essay_content": content_item.get("essay_content"),
-                    "video_title": content_item.get("video_title"),
-                    "video_description": content_item.get("video_description"),
-                    "video_content": content_item.get("video_content"),
-                    "quiz_title": content_item.get("quiz_title"),
-                    "quiz_description": content_item.get("quiz_description"),
-                })
+                content_row = course_doc.append(
+                    "module_content",
+                    {
+                        "module_name": content_item.get("module_name"),
+                        "content_type": content_item.get("content_type"),
+                        "essay_title": content_item.get("essay_title"),
+                        "essay_content": content_item.get("essay_content"),
+                        "video_title": content_item.get("video_title"),
+                        "video_description": content_item.get("video_description"),
+                        "video_content": content_item.get("video_content"),
+                        "quiz_title": content_item.get("quiz_title"),
+                        "quiz_description": content_item.get("quiz_description"),
+                    },
+                )
 
                 # Store reference to this content row for later quiz question assignment
                 content_rows[idx] = {
                     "row": content_row,
-                    "quiz_questions": content_item.get("quiz_questions", []) if content_item.get(
-                        "content_type") == "Quiz" else []
+                    "quiz_questions": content_item.get("quiz_questions", [])
+                    if content_item.get("content_type") == "Quiz"
+                    else [],
                 }
 
             # Save to get the content rows created with proper names
@@ -496,30 +513,34 @@ def create_course():
                     for q in content_info["quiz_questions"]:
                         # Create quiz question document separately
                         quiz_question = frappe.new_doc("LMS Quiz Question")
-                        quiz_question.update({
-                            "parenttype": "LMS Course Module Content",
-                            "parentfield": "quiz_questions",
-                            "parent": content_row.name,
-                            "question": q.get("question"),
-                            "question_type": q.get("question_type"),
-                            "option_a": q.get("option_a"),
-                            "option_b": q.get("option_b"),
-                            "option_c": q.get("option_c"),
-                            "option_d": q.get("option_d"),
-                            "correct_answer": q.get("correct_answer"),
-                            "marks": q.get("marks", 1),
-                            "points": q.get("points", 1),
-                            "is_required": q.get("is_required", 0),
-                            "explanation": q.get("explanation"),
-                        })
+                        quiz_question.update(
+                            {
+                                "parenttype": "LMS Course Module Content",
+                                "parentfield": "quiz_questions",
+                                "parent": content_row.name,
+                                "question": q.get("question"),
+                                "question_type": q.get("question_type"),
+                                "option_a": q.get("option_a"),
+                                "option_b": q.get("option_b"),
+                                "option_c": q.get("option_c"),
+                                "option_d": q.get("option_d"),
+                                "correct_answer": q.get("correct_answer"),
+                                "marks": q.get("marks", 1),
+                                "points": q.get("points", 1),
+                                "is_required": q.get("is_required", 0),
+                                "explanation": q.get("explanation"),
+                            }
+                        )
 
                         quiz_question.insert(ignore_permissions=True)
-                        quiz_questions_created.append({
-                            "name": quiz_question.name,
-                            "question": quiz_question.question,
-                            "parent_content": content_row.name,
-                            "module_name": content_row.module_name
-                        })
+                        quiz_questions_created.append(
+                            {
+                                "name": quiz_question.name,
+                                "question": quiz_question.question,
+                                "parent_content": content_row.name,
+                                "module_name": content_row.module_name,
+                            }
+                        )
 
         frappe.db.commit()
 
@@ -543,12 +564,14 @@ def create_course():
                 print(f"Quiz count query failed: {e}")
                 quiz_count = 0
 
-            module_content_summary.append({
-                "name": row.name,
-                "module_name": row.module_name,
-                "content_type": row.content_type,
-                "quiz_questions_count": quiz_count
-            })
+            module_content_summary.append(
+                {
+                    "name": row.name,
+                    "module_name": row.module_name,
+                    "content_type": row.content_type,
+                    "quiz_questions_count": quiz_count,
+                }
+            )
 
         return {
             "success": True,
@@ -556,12 +579,13 @@ def create_course():
             "course_name": course_doc.name,
             "module_content": module_content_summary,
             "quiz_questions_created": quiz_questions_created,
-            "total_quiz_questions": len(quiz_questions_created)
+            "total_quiz_questions": len(quiz_questions_created),
         }
 
     except Exception as e:
         frappe.log_error(frappe.get_traceback(), "Create Course Failed")
         return {"error": str(e), "traceback": frappe.get_traceback()}
+
 
 @frappe.whitelist(allow_guest=True)
 def get_published_courses(limit=10, page=1):
@@ -604,9 +628,7 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
         course_filters["status"] = status
 
     if course_filters:
-        filtered_courses = frappe.get_all(
-            "LMS Course", filters=course_filters, fields=["name"]
-        )
+        filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name"])
         filtered_course_names = set(c["name"] for c in filtered_courses)
         course_names = [name for name in course_names if name in filtered_course_names]
 
@@ -614,9 +636,7 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
     for cname in course_names:
         # Get enrolled students for this course
         students = frappe.get_all(
-            "LMS Enrollment",
-            filters={"course": cname, "member_type": "Student"},
-            fields=["member"]
+            "LMS Enrollment", filters={"course": cname, "member_type": "Student"}, fields=["member"]
         )
         if students:
             enriched_students = []
@@ -628,5 +648,3 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
             courses.append(course_info)
 
     return {"success": True, "data": courses, "count": len(courses)}
-
-

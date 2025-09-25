@@ -2486,4 +2486,3 @@ def get_streak_info():
 		"current_streak": current_streak,
 		"longest_streak": longest_streak,
 	}
-

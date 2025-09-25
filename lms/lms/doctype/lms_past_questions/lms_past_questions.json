@@ -1,0 +1,242 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:PQ-{DD}{MM}{YY}-{#####}",
+ "creation": "2025-09-25 12:45:37.462353",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "title",
+  "description",
+  "column_break_lyml",
+  "educational_level",
+  "subject",
+  "question_type",
+  "exam_type",
+  "comments",
+  "column_break_xaes",
+  "academic_year",
+  "category",
+  "drafted",
+  "file_upload_section",
+  "file",
+  "include_answer",
+  "section_break_kmco",
+  "enable_comment",
+  "public",
+  "student_link",
+  "payment_tab",
+  "paid_past_question",
+  "amount",
+  "currency",
+  "amount_usd"
+ ],
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "Title",
+   "reqd": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Text Editor",
+   "label": "Description"
+  },
+  {
+   "fieldname": "column_break_lyml",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "educational_level",
+   "fieldtype": "Link",
+   "label": "Educational Level",
+   "options": "LMS Course Levels"
+  },
+  {
+   "fieldname": "subject",
+   "fieldtype": "Link",
+   "label": "Subject",
+   "options": "Subject"
+  },
+  {
+   "fieldname": "question_type",
+   "fieldtype": "Select",
+   "label": "Question Type",
+   "options": "Quiz/Multiple Choice\nEssay\nMixed\nPractical\nTheory"
+  },
+  {
+   "fieldname": "exam_type",
+   "fieldtype": "Select",
+   "label": "Exam Type",
+   "options": "Wassce\nBece\nMock Exam\nClass Test\nAssignment"
+  },
+  {
+   "fieldname": "column_break_xaes",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "academic_year",
+   "fieldtype": "Data",
+   "label": "Academic Year"
+  },
+  {
+   "fieldname": "category",
+   "fieldtype": "Link",
+   "label": "Category",
+   "options": "LMS Category"
+  },
+  {
+   "fieldname": "file_upload_section",
+   "fieldtype": "Section Break",
+   "label": "File Upload"
+  },
+  {
+   "fieldname": "file",
+   "fieldtype": "Attach",
+   "label": "File"
+  },
+  {
+   "default": "0",
+   "fieldname": "include_answer",
+   "fieldtype": "Check",
+   "label": "Include Answer"
+  },
+  {
+   "fieldname": "section_break_kmco",
+   "fieldtype": "Section Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "enable_comment",
+   "fieldtype": "Check",
+   "label": "Enable Comment"
+  },
+  {
+   "default": "0",
+   "fieldname": "public",
+   "fieldtype": "Check",
+   "label": "Public"
+  },
+  {
+   "fieldname": "student_link",
+   "fieldtype": "Data",
+   "label": "Student link"
+  },
+  {
+   "fieldname": "payment_tab",
+   "fieldtype": "Tab Break",
+   "label": "Payment"
+  },
+  {
+   "default": "0",
+   "fieldname": "paid_past_question",
+   "fieldtype": "Check",
+   "label": "Paid Past Question"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount"
+  },
+  {
+   "fieldname": "currency",
+   "fieldtype": "Link",
+   "label": "Currency",
+   "options": "Currency"
+  },
+  {
+   "fieldname": "amount_usd",
+   "fieldtype": "Currency",
+   "label": "Amount (USD)"
+  },
+  {
+   "default": "0",
+   "fieldname": "drafted",
+   "fieldtype": "Check",
+   "label": "Drafted"
+  },
+  {
+   "fieldname": "comments",
+   "fieldtype": "Table",
+   "label": "Comment",
+   "options": "Past Question Comments"
+  }
+ ],
+ "grid_page_length": 50,
+ "index_web_pages_for_search": 1,
+ "links": [],
+ "modified": "2025-09-25 13:28:46.959629",
+ "modified_by": "Administrator",
+ "module": "LMS",
+ "name": "LMS Past Questions",
+ "naming_rule": "Expression",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Parent",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "LMS Student",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Moderator",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
