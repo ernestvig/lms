@@ -530,10 +530,18 @@ def create_course():
         module_content_summary = []
         for row in course_doc.module_content:
             # Count quiz questions for this content
-            quiz_count = frappe.db.count("LMS Quiz Question", {
-                "parent": row.name,
-                "parenttype": "LMS Course Module Content"
-            })
+            # quiz_count = frappe.db.count("LMS Quiz Question", {
+            #     "parent": row.name,
+            #     "parenttype": "LMS Course Module Content"
+            # })
+            try:
+                quiz_count = frappe.db.count("LMS Quiz Question", {
+                    "parent": row.name,
+                    "parenttype": "LMS Course Module Content"
+                })
+            except Exception as e:
+                print(f"Quiz count query failed: {e}")
+                quiz_count = 0
 
             module_content_summary.append({
                 "name": row.name,
