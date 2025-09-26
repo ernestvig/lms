@@ -128,7 +128,6 @@ def get_student_enrollments(student=None, limit=None, start=0):
 	return {"success": True, "data": enrollments, "count": total_count}
 
 
-
 @frappe.whitelist()
 def get_tutor_enrollment_kpi(tutor):
 	# Get courses created by the tutor

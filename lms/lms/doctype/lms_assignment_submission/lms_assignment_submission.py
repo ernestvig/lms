@@ -228,24 +228,24 @@ def submit_quiz(assignment, answers):
 
 	return {"submission": submission.name, "score": total_score, "answers": detailed_answers}
 
+
 @frappe.whitelist()
 def get_student_submitted_assignments(student):
+	students_link = frappe.get_all(
+		"PL Students",
+		filters={"students": student},
+		fields=["parent"],
+	)
+	assignment_ids = [s.parent for s in students_link]
 
-    students_link = frappe.get_all(
-        "PL Students",
-        filters={"students": student},
-        fields=["parent"],
-    )
-    assignment_ids = [s.parent for s in students_link]
+	if not assignment_ids:
+		return {"success": True, "data": []}
 
-    if not assignment_ids:
-        return {"success": True, "data": []}
+	submitted_assignments = frappe.get_all(
+		"LMS Assignment Submission",
+		filters={"assignment": ["in", assignment_ids], "member": student},
+		fields=["*"],
+		order_by="creation desc",
+	)
 
-    submitted_assignments = frappe.get_all(
-        "LMS Assignment Submission",
-        filters={"assignment": ["in", assignment_ids], "member": student},
-        fields=["*"],
-        order_by="creation desc",
-    )
-
-    return {"success": True, "data": submitted_assignments}
+	return {"success": True, "data": submitted_assignments}
