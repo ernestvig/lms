@@ -413,7 +413,351 @@ def get_course_detail(course_name):
 	return {"success": True, "data": course_data}
 
 @frappe.whitelist()
-def create_course():
+def create_enhanced_course():
+    """
+    Create a comprehensive course with modules, content blocks, and settings.
+    Handles the new JSON structure with improved organization.
+    """
+    import json
+    from frappe.utils import now, generate_hash
+
+    try:
+        data = {}
+        if frappe.request and frappe.request.data:
+            data = json.loads(frappe.request.data)
+
+        creation_time = now()
+        owner = frappe.session.user
+        course_name = generate_hash(length=10)
+
+        # === Create Course ===
+        course_fields = {
+            "name": course_name,
+            "title": data.get("title", ""),
+            "description": data.get("courseDescription", ""),
+            "short_introduction": data.get("courseDescription", "")[:500],  # Truncate for short intro
+            "image": data.get("thumbnailImage", ""),
+            "video": data.get("introductoryVideo", ""),
+            "tags": ",".join(data.get("tags", [])) if isinstance(data.get("tags"), list) else data.get("tagCategory", ""),
+            "category": data.get("category", ""),
+            "education_level": data.get("educationLevel", ""),
+            "course_language": data.get("courseLanguage", ""),
+            "paid_course": 1 if data.get("pricingModel") == "paid" else 0,
+            "course_price": data.get("price", 0) if data.get("pricingModel") == "paid" else 0,
+            "currency": "USD" if data.get("pricingModel") == "paid" else "",
+            "requirement": data.get("requirements", ""),
+            "objectives": data.get("courseObjective", ""),
+            "published": 1 if data.get("visibility") == "public" else 0,
+            "enable_certification": 1 if data.get("issueCertificate", False) else 0,
+            "creation": creation_time,
+            "modified": creation_time,
+            "modified_by": owner,
+            "owner": owner,
+            "docstatus": 0
+        }
+
+        # Insert course
+        frappe.db.sql("""
+            INSERT INTO `tabLMS Course` 
+            (name, title, description, short_introduction, image, video, tags, category,
+             education_level, course_language, paid_course, course_price, currency,
+             requirement, objectives, published, enable_certification, creation, modified, 
+             modified_by, owner, docstatus)
+            VALUES 
+            (%(name)s, %(title)s, %(description)s, %(short_introduction)s, %(image)s, %(video)s,
+             %(tags)s, %(category)s, %(education_level)s, %(course_language)s, %(paid_course)s,
+             %(course_price)s, %(currency)s, %(requirement)s, %(objectives)s, %(published)s,
+             %(enable_certification)s, %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, %(docstatus)s)
+        """, course_fields)
+
+        # === Add Instructor (auto-populate current user) ===
+        instructor_name = generate_hash(length=10)
+        frappe.db.sql("""
+            INSERT INTO `tabCourse Instructor`
+            (name, instructor, parent, parenttype, parentfield, idx, creation, modified, 
+             modified_by, owner, docstatus)
+            VALUES 
+            (%(name)s, %(instructor)s, %(parent)s, 'LMS Course', 'instructors', 1,
+             %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+        """, {
+            "name": instructor_name,
+            "instructor": data.get("instructor", owner),  # Use provided instructor or current user
+            "parent": course_name,
+            "creation": creation_time,
+            "modified": creation_time,
+            "modified_by": owner,
+            "owner": owner
+        })
+
+        # === Create Course Settings ===
+        settings_name = generate_hash(length=10)
+        frappe.db.sql("""
+            INSERT INTO `tabCourse Settings`
+            (name, course, target_audience, duration, enable_comments, certificate_template,
+             visibility, creation, modified, modified_by, owner, docstatus)
+            VALUES
+            (%(name)s, %(course)s, %(target_audience)s, %(duration)s, %(enable_comments)s,
+             %(certificate_template)s, %(visibility)s, %(creation)s, %(modified)s, 
+             %(modified_by)s, %(owner)s, 0)
+        """, {
+            "name": settings_name,
+            "course": course_name,
+            "target_audience": data.get("targetAudience", "All Levels"),
+            "duration": data.get("duration", ""),
+            "enable_comments": 1 if data.get("enableComments", True) else 0,
+            "certificate_template": data.get("certificate", ""),
+            "visibility": data.get("visibility", "public"),
+            "creation": creation_time,
+            "modified": creation_time,
+            "modified_by": owner,
+            "owner": owner
+        })
+
+        # === Create Modules and Content ===
+        modules_created = []
+        content_blocks_created = []
+        quiz_questions_created = []
+
+        if "modules" in data:
+            for mod_idx, module_data in enumerate(data["modules"]):
+                module_name = generate_hash(length=10)
+                modules_created.append({
+                    "name": module_name,
+                    "title": module_data.get("title", ""),
+                    "description": module_data.get("description", "")
+                })
+
+                # Insert Course Module
+                frappe.db.sql("""
+                    INSERT INTO `tabCourse Module`
+                    (name, course, title, description, module_order, creation, modified,
+                     modified_by, owner, docstatus)
+                    VALUES
+                    (%(name)s, %(course)s, %(title)s, %(description)s, %(module_order)s,
+                     %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+                """, {
+                    "name": module_name,
+                    "course": course_name,
+                    "title": module_data.get("title", ""),
+                    "description": module_data.get("description", ""),
+                    "module_order": mod_idx + 1,
+                    "creation": creation_time,
+                    "modified": creation_time,
+                    "modified_by": owner,
+                    "owner": owner
+                })
+
+                # === Create Content Blocks ===
+                if "contentBlocks" in module_data:
+                    for block_idx, content_block in enumerate(module_data["contentBlocks"]):
+                        content_name = generate_hash(length=10)
+                        content_type = content_block.get("type", "essay")
+                        content_data = content_block.get("data", {})
+
+                        content_blocks_created.append({
+                            "name": content_name,
+                            "type": content_type,
+                            "title": content_block.get("title", ""),
+                            "module": module_name
+                        })
+
+                        # Prepare content fields based on type
+                        essay_content = ""
+                        video_url = ""
+                        video_description = ""
+                        quiz_title = content_block.get("title", "")
+
+                        if content_type == "essay":
+                            essay_content = content_data.get("content", "")
+                        elif content_type == "video":
+                            video_url = content_data.get("videoUrl", "")
+                            video_description = content_data.get("description", "")
+                        elif content_type == "quiz":
+                            quiz_title = content_block.get("title", "Quiz")
+
+                        # Insert Content Block
+                        frappe.db.sql("""
+                            INSERT INTO `tabCourse Content Block`
+                            (name, module, course, content_type, title, content_order, essay_content,
+                             video_url, video_description, quiz_title, creation, modified,
+                             modified_by, owner, docstatus)
+                            VALUES
+                            (%(name)s, %(module)s, %(course)s, %(content_type)s, %(title)s, %(content_order)s,
+                             %(essay_content)s, %(video_url)s, %(video_description)s, %(quiz_title)s,
+                             %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+                        """, {
+                            "name": content_name,
+                            "module": module_name,
+                            "course": course_name,
+                            "content_type": content_type,
+                            "title": content_block.get("title", ""),
+                            "content_order": block_idx + 1,
+                            "essay_content": essay_content,
+                            "video_url": video_url,
+                            "video_description": video_description,
+                            "quiz_title": quiz_title,
+                            "creation": creation_time,
+                            "modified": creation_time,
+                            "modified_by": owner,
+                            "owner": owner
+                        })
+
+                        # === Create Quiz Questions ===
+                        if content_type == "quiz" and "questions" in content_data:
+                            for q_idx, question_data in enumerate(content_data["questions"]):
+                                question_name = generate_hash(length=10)
+                                
+                                # Handle options array for multiple choice
+                                options = question_data.get("options", [])
+                                option_a = options[0] if len(options) > 0 else ""
+                                option_b = options[1] if len(options) > 1 else ""
+                                option_c = options[2] if len(options) > 2 else ""
+                                option_d = options[3] if len(options) > 3 else ""
+                                
+                                # Handle correct answer (could be index or string)
+                                correct_answer = question_data.get("correctAnswer", "")
+                                if isinstance(correct_answer, int) and 0 <= correct_answer < len(options):
+                                    correct_answer = options[correct_answer]
+                                
+                                frappe.db.sql("""
+                                    INSERT INTO `tabLMS Quiz Question`
+                                    (name, question, question_type, option_a, option_b, option_c, option_d,
+                                     correct_answer, marks, parent, parenttype, parentfield, idx,
+                                     creation, modified, modified_by, owner, docstatus)
+                                    VALUES
+                                    (%(name)s, %(question)s, 'Multiple Choice', %(option_a)s, %(option_b)s,
+                                     %(option_c)s, %(option_d)s, %(correct_answer)s, %(marks)s, %(parent)s,
+                                     'Course Content Block', 'quiz_questions', %(idx)s, %(creation)s,
+                                     %(modified)s, %(modified_by)s, %(owner)s, 0)
+                                """, {
+                                    "name": question_name,
+                                    "question": question_data.get("question", ""),
+                                    "option_a": option_a,
+                                    "option_b": option_b,
+                                    "option_c": option_c,
+                                    "option_d": option_d,
+                                    "correct_answer": str(correct_answer),
+                                    "marks": int(question_data.get("mark", 1)),
+                                    "parent": content_name,
+                                    "idx": q_idx + 1,
+                                    "creation": creation_time,
+                                    "modified": creation_time,
+                                    "modified_by": owner,
+                                    "owner": owner
+                                })
+
+                                quiz_questions_created.append({
+                                    "name": question_name,
+                                    "question": question_data.get("question", ""),
+                                    "content_block": content_name,
+                                    "module": module_name
+                                })
+
+        # Commit all changes
+        frappe.db.commit()
+
+        return {
+            "success": True,
+            "message": "Enhanced course created successfully",
+            "data": {
+                "course_name": course_name,
+                "course_title": data.get("title", ""),
+                "pricing_model": data.get("pricingModel", "free"),
+                "price": data.get("price", 0),
+                "modules_count": len(modules_created),
+                "content_blocks_count": len(content_blocks_created),
+                "quiz_questions_count": len(quiz_questions_created),
+                "modules": modules_created,
+                "settings": {
+                    "target_audience": data.get("targetAudience"),
+                    "duration": data.get("duration"),
+                    "enable_comments": data.get("enableComments", True),
+                    "visibility": data.get("visibility", "public")
+                }
+            }
+        }
+
+    except Exception as e:
+        frappe.db.rollback()
+        frappe.log_error(frappe.get_traceback(), "Enhanced Course Creation Failed")
+        return {"error": str(e), "traceback": frappe.get_traceback()}
+
+
+# Helper function to get enhanced course details
+@frappe.whitelist(allow_guest=True)
+def get_enhanced_course_detail(course_name):
+    """
+    Fetch a course with its modules, content blocks, and settings.
+    """
+    try:
+        # Get course basic info
+        course_data = frappe.db.sql("""
+            SELECT name, title, description, image, video, tags, category, education_level,
+                   course_language, paid_course, course_price, currency, requirement, objectives,
+                   published, enable_certification
+            FROM `tabLMS Course`
+            WHERE name = %(course_name)s
+        """, {"course_name": course_name}, as_dict=True)
+
+        if not course_data:
+            return {"error": "Course not found"}
+
+        course = course_data[0]
+
+        # Get course settings
+        settings = frappe.db.sql("""
+            SELECT target_audience, duration, enable_comments, certificate_template, visibility
+            FROM `tabCourse Settings`
+            WHERE course = %(course_name)s
+        """, {"course_name": course_name}, as_dict=True)
+
+        # Get modules with content blocks
+        modules = frappe.db.sql("""
+            SELECT name, title, description, module_order
+            FROM `tabCourse Module`
+            WHERE course = %(course_name)s
+            ORDER BY module_order
+        """, {"course_name": course_name}, as_dict=True)
+
+        for module in modules:
+            # Get content blocks for each module
+            content_blocks = frappe.db.sql("""
+                SELECT name, content_type, title, content_order, essay_content,
+                       video_url, video_description, quiz_title
+                FROM `tabCourse Content Block`
+                WHERE module = %(module_name)s
+                ORDER BY content_order
+            """, {"module_name": module["name"]}, as_dict=True)
+
+            # Get quiz questions for quiz blocks
+            for block in content_blocks:
+                if block["content_type"] == "quiz":
+                    questions = frappe.db.sql("""
+                        SELECT question, option_a, option_b, option_c, option_d,
+                               correct_answer, marks
+                        FROM `tabLMS Quiz Question`
+                        WHERE parent = %(parent)s
+                        ORDER BY idx
+                    """, {"parent": block["name"]}, as_dict=True)
+                    block["questions"] = questions
+
+            module["content_blocks"] = content_blocks
+
+        return {
+            "success": True,
+            "data": {
+                "course": course,
+                "settings": settings[0] if settings else {},
+                "modules": modules
+            }
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Enhanced Course Detail Failed")
+        return {"error": str(e)}
+
+@frappe.whitelist()
+def create_course_sql():
     """
     Create a Course with Modules, Instructors, Content (Essay/Video/Quiz),
     and Quiz Questions using direct SQL.

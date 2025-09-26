@@ -5,61 +5,61 @@
     "engine": "InnoDB",
     "field_order": [
       "course",
-      "title",
-      "description",
+      "target_audience",
+      "duration",
       "column_break_4",
-      "module_order",
-      "is_published"
+      "enable_comments",
+      "certificate_template",
+      "visibility"
     ],
     "fields": [
       {
         "fieldname": "course",
         "fieldtype": "Link",
-        "in_list_view": 1,
         "label": "Course",
         "options": "LMS Course",
         "reqd": 1
       },
       {
-        "fieldname": "title",
-        "fieldtype": "Data",
-        "in_list_view": 1,
-        "label": "Module Title",
+        "fieldname": "target_audience",
+        "fieldtype": "Select",
+        "label": "Target Audience",
+        "options": "Beginners\nIntermediate\nAdvanced\nAll Levels",
         "reqd": 1
       },
       {
-        "fieldname": "description",
-        "fieldtype": "Text",
-        "label": "Description"
+        "fieldname": "duration",
+        "fieldtype": "Data",
+        "label": "Duration"
       },
       {
         "fieldname": "column_break_4",
         "fieldtype": "Column Break"
       },
       {
-        "fieldname": "module_order",
-        "fieldtype": "Int",
-        "in_list_view": 1,
-        "label": "Order"
+        "default": "1",
+        "fieldname": "enable_comments",
+        "fieldtype": "Check",
+        "label": "Enable Comments"
       },
       {
-        "default": "1",
-        "fieldname": "is_published",
-        "fieldtype": "Check",
-        "label": "Published"
-      }
-    ],
-    "index_web_pages_for_search": 1,
-    "links": [
+        "fieldname": "certificate_template",
+        "fieldtype": "Attach",
+        "label": "Certificate Template"
+      },
       {
-        "link_doctype": "Course Content Block",
-        "link_fieldname": "module"
+        "default": "public",
+        "fieldname": "visibility",
+        "fieldtype": "Select",
+        "label": "Visibility",
+        "options": "public\nstudents-with-link",
+        "reqd": 1
       }
     ],
     "modified": "2025-09-26 12:00:00.000000",
     "modified_by": "Administrator",
     "module": "LMS",
-    "name": "Course Module",
+    "name": "Course Settings",
     "naming_rule": "Random",
     "owner": "Administrator",
     "permissions": [
@@ -100,9 +100,8 @@
         "write": 1
       }
     ],
-    "sort_field": "module_order",
-    "sort_order": "ASC",
+    "sort_field": "modified",
+    "sort_order": "DESC",
     "states": [],
-    "title_field": "title",
     "track_changes": 1
   }

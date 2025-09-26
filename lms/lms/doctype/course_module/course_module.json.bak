@@ -1,0 +1,28 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2025-09-18 13:00:40.588657",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "module_content"
+ ],
+ "fields": [
+  {
+  "fieldname": "module_content",
+  "fieldtype": "Table",
+  "label": "Module Content",
+  "options": "LMS Course Module Content"
+}
+ ],
+ "modified_by": "Administrator",
+ "module": "LMS",
+ "name": "Course Module",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "creation",
+ "sort_order": "DESC",
+ "states": []
+}
