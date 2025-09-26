@@ -7,6 +7,8 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
+  "course",
+  "column_break_gkyi",
   "module_name",
   "column_break_gikq",
   "content_type",
@@ -102,13 +104,23 @@
    "fieldtype": "Table",
    "label": "Quiz Questions",
    "options": "LMS Quiz Question"
+  },
+  {
+   "fieldname": "course",
+   "fieldtype": "Link",
+   "label": "Course",
+   "options": "LMS Course"
+  },
+  {
+   "fieldname": "column_break_gkyi",
+   "fieldtype": "Column Break"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-09-23 11:19:45.568850",
+ "modified": "2025-09-26 09:20:14.289926",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course Module Content",
