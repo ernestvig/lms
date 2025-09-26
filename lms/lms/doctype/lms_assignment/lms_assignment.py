@@ -39,7 +39,6 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 		fields=["parent"],
 	)
 
-	# Extract assignment IDs
 	assignment_ids = [s.parent for s in student_links]
 
 	if not assignment_ids:
@@ -56,7 +55,86 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 		order_by="creation desc",
 	)
 
-	return {"success": True, "data": user_assignments, "count": len(user_assignments)}
+	result = []
+	for a in user_assignments:
+		quiz_questions = frappe.get_all(
+			"LMS Quiz Question",
+			filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
+			fields=[
+				"name",
+				"question",
+				"question_type",
+				"marks",
+				"option_a",
+				"option_b",
+				"option_c",
+				"option_d",
+				"correct_answer",
+				"explanation",
+			],
+		)
+
+		result.append(
+			{
+				"id": a.get("name"),
+				"title": a.get("title"),
+				"type": a.get("type"),
+				"question": a.get("question"),
+				"created_at": a.get("creation"),
+				"description": a.get("instructions") or a.get("description"),
+				"file": a.get("file"),
+				"resource_link": a.get("resource_link"),
+				"show_answers": a.get("show_answers"),
+				"due_date": a.get("due_date"),
+				"total_marks": a.get("total_score"),
+				"submitted": a.get("submitted"),
+				"drafted": a.get("drafted"),
+				"grade_assignment": a.get("grade_assignment"),
+				"is_public": a.get("public"),
+				"quiz_questions": [
+					{
+						"id": q.get("name"),
+						"question": q.get("question"),
+						"question_type": q.get("question_type"),
+						"options": q.get("options"),
+						"correct_answer": q.get("correct_answer"),
+						"marks": q.get("marks"),
+						"option_a": q.get("option_a"),
+						"option_b": q.get("option_b"),
+						"option_c": q.get("option_c"),
+						"option_d": q.get("option_d"),
+						"explanation": q.get("explanation"),
+					}
+					for q in quiz_questions
+				],
+				"subject": (
+					{
+						"id": a.get("subject"),
+						"subject_name": frappe.db.get_value("Subject", a.get("subject"), "subject_name"),
+					}
+					if a.get("subject")
+					else None
+				),
+				"educational_level": (
+					{
+						"id": a.get("educational_level"),
+						"educational_level": frappe.db.get_value(
+							"LMS Course Levels", a.get("educational_level"), "education_level"
+						),
+					}
+					if a.get("educational_level")
+					else None
+				),
+			}
+		)
+
+	return [
+		{
+			"success": True,
+			"message": "Assignments fetched successfully",
+			"data": result,
+		}
+	]
 
 
 @frappe.whitelist()
@@ -77,3 +155,95 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
 	)
 
 	return {"success": True, "data": instructor_assignments, "count": len(instructor_assignments)}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_assignment_details(assignment):
+	assignments = frappe.get_all(
+		"LMS Assignment",
+		filters={"name": assignment},
+		fields=["*"],
+	)
+
+	if not assignments:
+		return {"success": False, "message": "Assignment not found"}
+
+	result = []
+	for a in assignments:
+		quiz_questions = frappe.get_all(
+			"LMS Quiz Question",
+			filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
+			fields=[
+				"name",
+				"question",
+				"question_type",
+				"marks",
+				"option_a",
+				"option_b",
+				"option_c",
+				"option_d",
+				"correct_answer",
+				"explanation",
+			],
+		)
+
+		result.append(
+			{
+				"id": a.get("name"),
+				"title": a.get("title"),
+				"type": a.get("type"),
+				"question": a.get("question"),
+				"created_at": a.get("creation"),
+				"description": a.get("instructions") or a.get("description"),
+				"file": a.get("file"),
+				"resource_link": a.get("resource_link"),
+				"show_answers": a.get("show_answers"),
+				"due_date": a.get("due_date"),
+				"total_marks": a.get("total_score"),
+				"submitted": a.get("submitted"),
+				"drafted": a.get("drafted"),
+				"grade_assignment": a.get("grade_assignment"),
+				"is_public": a.get("public"),
+				"quiz_questions": [
+					{
+						"id": q.get("name"),
+						"question": q.get("question"),
+						"question_type": q.get("question_type"),
+						"marks": q.get("marks"),
+						"option_a": q.get("option_a"),
+						"option_b": q.get("option_b"),
+						"option_c": q.get("option_c"),
+						"option_d": q.get("option_d"),
+						"correct_answer": q.get("correct_answer"),
+						"explanation": q.get("explanation"),
+					}
+					for q in quiz_questions
+				],
+				"subject": (
+					{
+						"id": a.get("subject"),
+						"subject_name": frappe.db.get_value("Subject", a.get("subject"), "subject_name"),
+					}
+					if a.get("subject")
+					else None
+				),
+				"educational_level": (
+					{
+						"id": a.get("educational_level"),
+						"educational_level": frappe.db.get_value(
+							"LMS Course Levels", a.get("educational_level"), "education_level"
+						),
+					}
+					if a.get("educational_level")
+					else None
+				),
+			}
+		)
+
+	return [
+		{
+			"success": True,
+			"message": "Assignments fetched successfully",
+			"data": result,
+		}
+	]
