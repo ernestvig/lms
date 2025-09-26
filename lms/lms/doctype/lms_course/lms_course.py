@@ -1037,7 +1037,7 @@ def create_course_sql():
         return {"error": str(e), "traceback": frappe.get_traceback()}
 
 @frappe.whitelist()
-def create_course_1():
+def create_course():
     """
     Create a Course with Modules, Instructors, Content (Essay/Video/Quiz),
     and Quiz Questions using direct SQL.
@@ -1259,171 +1259,171 @@ def create_course_direct():
     and Quiz Questions.
     """
     import json
+    
+    try:
+        data = {}
+        
+        if frappe.request and frappe.request.data:
+            data = json.loads(frappe.request.data)
 
-	try:
-		data = {}
-		if frappe.request and frappe.request.data:
-			data = json.loads(frappe.request.data)
+        # === Create Course ===
+        course_doc = frappe.new_doc("LMS Course")
 
-		# === Create Course ===
-		course_doc = frappe.new_doc("LMS Course")
+        # Map top-level fields
+        for field in [
+            "title",
+            "tags",
+            "status",
+            "image",
+            "published",
+            "published_on",
+            "upcoming",
+            "featured",
+            "disable_self_learning",
+            "short_introduction",
+            "description",
+            "paid_course",
+            "enable_certification",
+            "paid_certificate",
+            "course_price",
+            "currency",
+            "amount_usd",
+            "enrollments",
+            "lessons",
+            "rating",
+            "course_language",
+            "price",
+            "introduction_video",
+            "requirement",
+            "education_level",
+            "subject",
+            "draft",
+        ]:
+            if field in data:
+                course_doc.set(field, data[field])
 
-		# Map top-level fields
-		for field in [
-			"title",
-			"tags",
-			"status",
-			"image",
-			"published",
-			"published_on",
-			"upcoming",
-			"featured",
-			"disable_self_learning",
-			"short_introduction",
-			"description",
-			"paid_course",
-			"enable_certification",
-			"paid_certificate",
-			"course_price",
-			"currency",
-			"amount_usd",
-			"enrollments",
-			"lessons",
-			"rating",
-			"course_language",
-			"price",
-			"introduction_video",
-			"requirement",
-			"education_level",
-			"subject",
-			"draft",
-		]:
-			if field in data:
-				course_doc.set(field, data[field])
+        # === Add Instructors (child table) ===
+        if "instructors" in data:
+            for inst in data["instructors"]:
+                course_doc.append("instructors", {"instructor": inst.get("instructor")})
 
-		# === Add Instructors (child table) ===
-		if "instructors" in data:
-			for inst in data["instructors"]:
-				course_doc.append("instructors", {"instructor": inst.get("instructor")})
+        # Save course first (so it has a name)
+        course_doc.insert(ignore_permissions=True)
 
-		# Save course first (so it has a name)
-		course_doc.insert(ignore_permissions=True)
+        # === Add Content First ===
+        content_rows = {}  # Store content row references
 
-		# === Add Content First ===
-		content_rows = {}  # Store content row references
+        if "content" in data:
+            for idx, content_item in enumerate(data["content"]):
+                # Create the module content row without quiz questions first
+                content_row = course_doc.append(
+                    "module_content",
+                    {
+                        "module_name": content_item.get("module_name"),
+                        "content_type": content_item.get("content_type"),
+                        "essay_title": content_item.get("essay_title"),
+                        "essay_content": content_item.get("essay_content"),
+                        "video_title": content_item.get("video_title"),
+                        "video_description": content_item.get("video_description"),
+                        "video_content": content_item.get("video_content"),
+                        "quiz_title": content_item.get("quiz_title"),
+                        "quiz_description": content_item.get("quiz_description"),
+                    },
+                )
 
-		if "content" in data:
-			for idx, content_item in enumerate(data["content"]):
-				# Create the module content row without quiz questions first
-				content_row = course_doc.append(
-					"module_content",
-					{
-						"module_name": content_item.get("module_name"),
-						"content_type": content_item.get("content_type"),
-						"essay_title": content_item.get("essay_title"),
-						"essay_content": content_item.get("essay_content"),
-						"video_title": content_item.get("video_title"),
-						"video_description": content_item.get("video_description"),
-						"video_content": content_item.get("video_content"),
-						"quiz_title": content_item.get("quiz_title"),
-						"quiz_description": content_item.get("quiz_description"),
-					},
-				)
+                # Store reference to this content row for later quiz question assignment
+                content_rows[idx] = {
+                    "row": content_row,
+                    "quiz_questions": content_item.get("quiz_questions", [])
+                    if content_item.get("content_type") == "Quiz"
+                    else [],
+                }
 
-				# Store reference to this content row for later quiz question assignment
-				content_rows[idx] = {
-					"row": content_row,
-					"quiz_questions": content_item.get("quiz_questions", [])
-					if content_item.get("content_type") == "Quiz"
-					else [],
-				}
+            # Save to get the content rows created with proper names
+            course_doc.save(ignore_permissions=True)
 
-			# Save to get the content rows created with proper names
-			course_doc.save(ignore_permissions=True)
+            # === Now Add Quiz Questions to each content row ===
+            quiz_questions_created = []
 
-			# === Now Add Quiz Questions to each content row ===
-			quiz_questions_created = []
+            for idx, content_info in content_rows.items():
+                if content_info["quiz_questions"]:
+                    # Get the saved content row
+                    content_row = course_doc.module_content[idx]
 
-			for idx, content_info in content_rows.items():
-				if content_info["quiz_questions"]:
-					# Get the saved content row
-					content_row = course_doc.module_content[idx]
+                    for q in content_info["quiz_questions"]:
+                        # Create quiz question document separately
+                        quiz_question = frappe.new_doc("LMS Quiz Question")
+                        quiz_question.update(
+                            {
+                                "parenttype": "LMS Course Module Content",
+                                "parentfield": "quiz_questions",
+                                "parent": content_row.name,
+                                "question": q.get("question"),
+                                "question_type": q.get("question_type"),
+                                "option_a": q.get("option_a"),
+                                "option_b": q.get("option_b"),
+                                "option_c": q.get("option_c"),
+                                "option_d": q.get("option_d"),
+                                "correct_answer": q.get("correct_answer"),
+                                "marks": q.get("marks", 1),
+                                "points": q.get("points", 1),
+                                "is_required": q.get("is_required", 0),
+                                "explanation": q.get("explanation"),
+                            }
+                        )
 
-					for q in content_info["quiz_questions"]:
-						# Create quiz question document separately
-						quiz_question = frappe.new_doc("LMS Quiz Question")
-						quiz_question.update(
-							{
-								"parenttype": "LMS Course Module Content",
-								"parentfield": "quiz_questions",
-								"parent": content_row.name,
-								"question": q.get("question"),
-								"question_type": q.get("question_type"),
-								"option_a": q.get("option_a"),
-								"option_b": q.get("option_b"),
-								"option_c": q.get("option_c"),
-								"option_d": q.get("option_d"),
-								"correct_answer": q.get("correct_answer"),
-								"marks": q.get("marks", 1),
-								"points": q.get("points", 1),
-								"is_required": q.get("is_required", 0),
-								"explanation": q.get("explanation"),
-							}
-						)
+                        quiz_question.insert(ignore_permissions=True)
+                        quiz_questions_created.append(
+                            {
+                                "name": quiz_question.name,
+                                "question": quiz_question.question,
+                                "parent_content": content_row.name,
+                                "module_name": content_row.module_name,
+                            }
+                        )
 
-						quiz_question.insert(ignore_permissions=True)
-						quiz_questions_created.append(
-							{
-								"name": quiz_question.name,
-								"question": quiz_question.question,
-								"parent_content": content_row.name,
-								"module_name": content_row.module_name,
-							}
-						)
+        frappe.db.commit()
 
-		frappe.db.commit()
+        # Reload the course document to get updated child tables
+        course_doc.reload()
 
-		# Reload the course document to get updated child tables
-		course_doc.reload()
+        # Prepare response
+        module_content_summary = []
+        for row in course_doc.module_content:
+            # Count quiz questions for this content
+            # quiz_count = frappe.db.count("LMS Quiz Question", {
+            #     "parent": row.name,
+            #     "parenttype": "LMS Course Module Content"
+            # })
+            try:
+                quiz_count = frappe.db.count(
+                    "LMS Quiz Question", {"parent": row.name, "parenttype": "LMS Course Module Content"}
+                )
+            except Exception as e:
+                print(f"Quiz count query failed: {e}")
+                quiz_count = 0
 
-		# Prepare response
-		module_content_summary = []
-		for row in course_doc.module_content:
-			# Count quiz questions for this content
-			# quiz_count = frappe.db.count("LMS Quiz Question", {
-			#     "parent": row.name,
-			#     "parenttype": "LMS Course Module Content"
-			# })
-			try:
-				quiz_count = frappe.db.count(
-					"LMS Quiz Question", {"parent": row.name, "parenttype": "LMS Course Module Content"}
-				)
-			except Exception as e:
-				print(f"Quiz count query failed: {e}")
-				quiz_count = 0
+            module_content_summary.append(
+                {
+                    "name": row.name,
+                    "module_name": row.module_name,
+                    "content_type": row.content_type,
+                    "quiz_questions_count": quiz_count,
+                }
+            )
 
-			module_content_summary.append(
-				{
-					"name": row.name,
-					"module_name": row.module_name,
-					"content_type": row.content_type,
-					"quiz_questions_count": quiz_count,
-				}
-			)
+        return {
+            "success": True,
+            "message": "Course created successfully",
+            "course_name": course_doc.name,
+            "module_content": module_content_summary,
+            "quiz_questions_created": quiz_questions_created,
+            "total_quiz_questions": len(quiz_questions_created),
+        }
 
-		return {
-			"success": True,
-			"message": "Course created successfully",
-			"course_name": course_doc.name,
-			"module_content": module_content_summary,
-			"quiz_questions_created": quiz_questions_created,
-			"total_quiz_questions": len(quiz_questions_created),
-		}
-
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Create Course Failed")
-		return {"error": str(e), "traceback": frappe.get_traceback()}
-
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Create Course Failed")
+        return {"error": str(e), "traceback": frappe.get_traceback()}
 
 @frappe.whitelist(allow_guest=True)
 def get_published_courses(limit=10, page=1):
