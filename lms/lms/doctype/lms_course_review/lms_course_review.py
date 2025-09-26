@@ -17,7 +17,6 @@ class LMSCourseReview(Document):
 
 @frappe.whitelist()
 def submit_review(rating, review, course):
-
 	# max rating value (default 5)
 	out_of_ratings = frappe.db.get_all(
 		"DocField", {"parent": "LMS Course Review", "fieldtype": "Rating"}, ["options"]
