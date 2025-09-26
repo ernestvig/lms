@@ -12,6 +12,7 @@
   "question",
   "file",
   "resource_link",
+  "educational_level",
   "column_break_hmwv",
   "type",
   "grade_assignment",
@@ -28,7 +29,8 @@
   "correction",
   "quiz_questions",
   "submitted",
-  "drafted"
+  "drafted",
+  "public"
  ],
  "fields": [
   {
@@ -138,7 +140,7 @@
    "label": "Submitted"
   },
   {
-   "default": "1",
+   "default": "0",
    "fieldname": "drafted",
    "fieldtype": "Check",
    "label": "Drafted"
@@ -152,11 +154,23 @@
    "fieldname": "file",
    "fieldtype": "Attach",
    "label": "File"
+  },
+  {
+   "fieldname": "educational_level",
+   "fieldtype": "Link",
+   "label": "Educational Level",
+   "options": "LMS Course Levels"
+  },
+  {
+   "default": "1",
+   "fieldname": "public",
+   "fieldtype": "Check",
+   "label": "Public"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 17:26:24.972332",
+ "modified": "2025-09-26 11:10:58.059807",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",
