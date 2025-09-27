@@ -263,3 +263,23 @@ def get_past_question_details(past_question):
 			for q in past_questions
 		],
 	}
+
+
+@frappe.whitelist(allow_guest=True)
+def get_past_question_count_kpi(tutor):
+	public_questions = frappe.get_all(
+		"LMS Past Questions", filters={"owner": tutor, "public": 1, "drafted": 0}, fields=["student_link"]
+	)
+	public_questions_count = len(public_questions)
+
+	# Collect all student links (assuming student_link is a user id or similar)
+	student_links = [q["student_link"] for q in public_questions if q.get("student_link")]
+	unique_students = set(student_links)
+	student_demographics_count = len(unique_students)
+
+	return {
+		"success": True,
+		"published_questions": public_questions_count,
+		"student_demographics": student_demographics_count,
+		"total_earnings": "GHS 0",
+	}

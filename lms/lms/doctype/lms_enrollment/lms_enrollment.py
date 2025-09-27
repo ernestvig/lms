@@ -126,3 +126,39 @@ def get_student_enrollments(student=None, limit=None, start=0):
 	)
 
 	return {"success": True, "data": enrollments, "count": total_count}
+
+
+@frappe.whitelist()
+def get_tutor_enrollment_kpi(tutor):
+	# Get courses created by the tutor
+	courses = frappe.get_all(
+		"LMS Course",
+		filters={"owner": tutor},
+		fields=["name"],
+	)
+	course_count = len(courses)
+
+	# Collect course names using a generator for memory efficiency
+	course_names = (c.name for c in courses)
+	course_names_list = list(course_names)
+
+	if not course_names_list:
+		return {
+			"success": True,
+			"course_count": 0,
+			"student_enrollment_count": 0,
+			"completion_rate": "0%",
+		}
+
+	# Get total student enrollments across tutor's courses
+	student_enrollment_count = frappe.db.count(
+		"LMS Enrollment",
+		filters={"course": ["in", course_names_list], "member_type": "Student"},
+	)
+
+	return {
+		"success": True,
+		"course_count": course_count,
+		"student_enrollment_count": student_enrollment_count,
+		"completion_rate": "0%",
+	}

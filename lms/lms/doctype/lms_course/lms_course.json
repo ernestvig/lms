@@ -61,7 +61,8 @@
   "course_language",
   "subject",
   "module_content",
-  "video"
+  "video",
+  "drafted"
  ],
  "fields": [
   {
@@ -332,6 +333,12 @@
    "fieldtype": "Table",
    "label": "Module Content",
    "options": "LMS Course Module Content"
+  },
+  {
+   "default": "0",
+   "fieldname": "drafted",
+   "fieldtype": "Check",
+   "label": "Drafted"
   }
  ],
  "is_published_field": "published",
@@ -350,7 +357,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-24 10:58:08.333974",
+ "modified": "2025-09-26 16:08:54.586684",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
