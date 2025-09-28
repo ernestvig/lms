@@ -710,7 +710,6 @@ def create_enhanced_course():
 		frappe.log_error(frappe.get_traceback(), "Enhanced Course Creation Failed")
 		return {"error": str(e), "traceback": frappe.get_traceback()}
 
-
 # Helper function to get enhanced course details
 @frappe.whitelist(allow_guest=True)
 def get_enhanced_course_detail(course_name):

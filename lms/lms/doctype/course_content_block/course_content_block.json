@@ -11,13 +11,17 @@
       "column_break_5",
       "content_order",
       "is_published",
-      "section_break_8",
+      "section_break_essay",
+      "essay_title",
       "essay_content",
-      "section_break_10",
+      "section_break_video",
+      "video_title",
       "video_url",
       "video_description",
-      "section_break_13",
+      "video_content",
+      "section_break_quiz",
       "quiz_title",
+      "quiz_description",
       "quiz_questions"
     ],
     "fields": [
@@ -41,7 +45,7 @@
         "fieldtype": "Select",
         "in_list_view": 1,
         "label": "Content Type",
-        "options": "essay\nvideo\nquiz",
+        "options": "Essay\nVideo\nQuiz",
         "reqd": 1
       },
       {
@@ -59,58 +63,85 @@
         "fieldname": "content_order",
         "fieldtype": "Int",
         "in_list_view": 1,
-        "label": "Order"
+        "label": "Order",
+        "default": "1",
+        "width": "60"
       },
       {
         "default": "1",
         "fieldname": "is_published",
         "fieldtype": "Check",
+        "in_list_view": 1,
         "label": "Published"
       },
       {
-        "depends_on": "eval:doc.content_type=='essay'",
-        "fieldname": "section_break_8",
+        "depends_on": "eval:doc.content_type=='Essay'",
+        "fieldname": "section_break_essay",
         "fieldtype": "Section Break",
         "label": "Essay Content"
       },
       {
-        "depends_on": "eval:doc.content_type=='essay'",
-        "fieldname": "essay_content",
-        "fieldtype": "HTML Editor",
-        "label": "Content"
+        "depends_on": "eval:doc.content_type=='Essay'",
+        "fieldname": "essay_title",
+        "fieldtype": "Text Editor",
+        "label": "Essay Title"
       },
       {
-        "depends_on": "eval:doc.content_type=='video'",
-        "fieldname": "section_break_10",
+        "depends_on": "eval:doc.content_type=='Essay'",
+        "fieldname": "essay_content",
+        "fieldtype": "Text",
+        "label": "Essay Content"
+      },
+      {
+        "depends_on": "eval:doc.content_type=='Video'",
+        "fieldname": "section_break_video",
         "fieldtype": "Section Break",
         "label": "Video Content"
       },
       {
-        "depends_on": "eval:doc.content_type=='video'",
+        "depends_on": "eval:doc.content_type=='Video'",
+        "fieldname": "video_title",
+        "fieldtype": "Data",
+        "label": "Video Title"
+      },
+      {
+        "depends_on": "eval:doc.content_type=='Video'",
         "fieldname": "video_url",
         "fieldtype": "Data",
         "label": "Video URL"
       },
       {
-        "depends_on": "eval:doc.content_type=='video'",
+        "depends_on": "eval:doc.content_type=='Video'",
         "fieldname": "video_description",
-        "fieldtype": "Text",
+        "fieldtype": "Long Text",
         "label": "Video Description"
       },
       {
-        "depends_on": "eval:doc.content_type=='quiz'",
-        "fieldname": "section_break_13",
+        "depends_on": "eval:doc.content_type=='Video'",
+        "fieldname": "video_content",
+        "fieldtype": "Attach",
+        "label": "Video Content"
+      },
+      {
+        "depends_on": "eval:doc.content_type=='Quiz'",
+        "fieldname": "section_break_quiz",
         "fieldtype": "Section Break",
         "label": "Quiz Content"
       },
       {
-        "depends_on": "eval:doc.content_type=='quiz'",
+        "depends_on": "eval:doc.content_type=='Quiz'",
         "fieldname": "quiz_title",
         "fieldtype": "Data",
         "label": "Quiz Title"
       },
       {
-        "depends_on": "eval:doc.content_type=='quiz'",
+        "depends_on": "eval:doc.content_type=='Quiz'",
+        "fieldname": "quiz_description",
+        "fieldtype": "Text",
+        "label": "Quiz Description"
+      },
+      {
+        "depends_on": "eval:doc.content_type=='Quiz'",
         "fieldname": "quiz_questions",
         "fieldtype": "Table",
         "label": "Quiz Questions",
