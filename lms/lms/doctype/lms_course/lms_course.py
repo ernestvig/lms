@@ -405,7 +405,7 @@ def serialize_course(course_name):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_course_detail(course_name):
+def get_course_detail_old(course_name):
     """
     Fetch a single course by name with full details.
     Uses serialize_course() so output is identical to list.
@@ -419,7 +419,7 @@ def get_course_detail(course_name):
 
 
 @frappe.whitelist()
-def create_enhanced_course():
+def create_course():
     """
     Create a comprehensive course with modules, content blocks, and settings.
     Handles the new JSON structure with improved organization.
@@ -717,7 +717,7 @@ def create_enhanced_course():
 
 # Helper function to get enhanced course details
 @frappe.whitelist(allow_guest=True)
-def get_enhanced_course_detail(course_name):
+def get_course_detail(course_name):
     """
     Fetch a course with its modules, content blocks, and settings.
     """
@@ -1115,7 +1115,7 @@ def create_course_sql():
 
 
 @frappe.whitelist()
-def create_course():
+def create_course_old():
     """
     Create a Course with Modules, Instructors, Content (Essay/Video/Quiz),
     and Quiz Questions using direct SQL.
