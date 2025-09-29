@@ -21,12 +21,20 @@ def submit_review(rating, review, course):
     out_of_ratings = frappe.db.get_all(
         "DocField", {"parent": "LMS Course Review", "fieldtype": "Rating"}, ["options"]
     )
-    out_of_ratings = (len(out_of_ratings) and cint(out_of_ratings[0].options)) or 5
+    out_of_ratings = (len(out_of_ratings) and cint(out_of_ratings[0].options)) or 5.0
 
     # create review
-    rating = cint(rating)
+    rating = float(rating)
+    out_of_ratings = float(out_of_ratings)
+    
+    if rating < 1 or rating > out_of_ratings:
+        frappe.throw(f"Rating must be between 1 and {out_of_ratings}")
+    
+    normalized_rating = rating / out_of_ratings
+    # return normalized_rating, rating, out_of_ratings
+        
     review_doc = frappe.get_doc(
-        {"doctype": "LMS Course Review", "rating": rating, "review": review, "course": course}
+        {"doctype": "LMS Course Review", "rating": normalized_rating, "review": review, "course": course}
     )
     review_doc.save(ignore_permissions=True)
 
@@ -47,7 +55,7 @@ def submit_review(rating, review, course):
             "your_review": {
                 "rating": rating,
                 "review": review,
-                "owner": frappe.db.get_value("User", {"user": review_doc.owner}, "full_name"),
+                "owner": frappe.db.get_value("User", {"name": review_doc.owner}, "full_name"),
                 "creation": review_doc.creation,
             },
         },

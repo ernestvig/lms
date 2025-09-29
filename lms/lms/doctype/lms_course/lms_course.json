@@ -265,7 +265,7 @@
   {
    "default": "0",
    "fieldname": "rating",
-   "fieldtype": "Data",
+   "fieldtype": "Rating",
    "label": "Rating",
    "read_only": 1
   },
@@ -350,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-29 09:44:49.386542",
+ "modified": "2025-09-29 13:14:15.934314",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
