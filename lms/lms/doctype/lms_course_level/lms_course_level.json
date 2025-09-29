@@ -7,27 +7,29 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "education_level"
+  "education_level",
+  "subjects"
  ],
  "fields": [
   {
    "fieldname": "education_level",
    "fieldtype": "Data",
    "in_list_view": 1,
+   "in_standard_filter": 1,
    "label": "Education Level",
    "reqd": 1
   },
   {
    "fieldname": "subjects",
    "fieldtype": "Table",
-   "options": "Education Level Subject",
-   "label": "Subjects Available at this Level"
+   "label": "Subjects Available at this Level",
+   "options": "Education Level Subject"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-17 17:06:44.286081",
+ "modified": "2025-09-29 11:08:34.102251",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course Level",
@@ -96,7 +98,9 @@
   }
  ],
  "row_format": "Dynamic",
+ "show_title_field_in_link": 1,
  "sort_field": "creation",
  "sort_order": "DESC",
- "states": []
+ "states": [],
+ "title_field": "education_level"
 }
