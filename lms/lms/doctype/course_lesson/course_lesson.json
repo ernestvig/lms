@@ -14,16 +14,31 @@
   "chapter",
   "is_scorm_package",
   "course",
+  "content_type",
+  "content_order",
+  "is_published",
   "section_break_11",
   "content",
   "body",
   "column_break_cjmf",
   "instructor_content",
   "instructor_notes",
+  "section_break_essay",
+  "essay_title",
+  "essay_content",
+  "section_break_video",
+  "video_title",
+  "video_url",
+  "video_description",
+  "video_content",
   "section_break_6",
   "youtube",
   "column_break_9",
   "quiz_id",
+  "section_break_quiz",
+  "quiz_title",
+  "quiz_description",
+  "quiz_questions",
   "section_break_16",
   "question",
   "column_break_15",
@@ -60,21 +75,6 @@
    "reqd": 1
   },
   {
-   "fieldname": "section_break_6",
-   "fieldtype": "Section Break",
-   "hidden": 1
-  },
-  {
-   "fieldname": "body",
-   "fieldtype": "Markdown Editor",
-   "ignore_xss_filter": 1,
-   "label": "Body"
-  },
-  {
-   "fieldname": "help",
-   "fieldtype": "HTML"
-  },
-  {
    "fetch_from": "chapter.course",
    "fieldname": "course",
    "fieldtype": "Link",
@@ -85,24 +85,158 @@
    "read_only": 1
   },
   {
-   "description": "Quiz will appear at the bottom of the lesson.",
-   "fieldname": "quiz_id",
-   "fieldtype": "Data",
-   "label": "Quiz ID"
+   "default": "Lesson",
+   "fieldname": "content_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Content Type",
+   "options": "Essay\nVideo\nQuiz\nLesson"
   },
   {
-   "fieldname": "column_break_9",
-   "fieldtype": "Column Break"
+   "default": "1",
+   "fieldname": "content_order",
+   "fieldtype": "Int",
+   "in_list_view": 1,
+   "label": "Order",
+   "width": "60"
+  },
+  {
+   "default": "1",
+   "fieldname": "is_published",
+   "fieldtype": "Check",
+   "in_list_view": 1,
+   "label": "Published"
+  },
+  {
+   "default": "0",
+   "fetch_from": "chapter.is_scorm_package",
+   "fieldname": "is_scorm_package",
+   "fieldtype": "Check",
+   "label": "Is SCORM Package",
+   "read_only": 1
   },
   {
    "fieldname": "section_break_11",
    "fieldtype": "Section Break"
   },
   {
+   "fieldname": "content",
+   "fieldtype": "Text",
+   "label": "Content"
+  },
+  {
+   "fieldname": "body",
+   "fieldtype": "Markdown Editor",
+   "ignore_xss_filter": 1,
+   "label": "Body"
+  },
+  {
+   "fieldname": "column_break_cjmf",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "instructor_content",
+   "fieldtype": "Text",
+   "label": "Instructor Content"
+  },
+  {
+   "fieldname": "instructor_notes",
+   "fieldtype": "Markdown Editor",
+   "label": "Instructor Notes"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Essay'",
+   "fieldname": "section_break_essay",
+   "fieldtype": "Section Break",
+   "label": "Essay Content"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Essay'",
+   "fieldname": "essay_title",
+   "fieldtype": "Data",
+   "label": "Essay Title"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Essay'",
+   "fieldname": "essay_content",
+   "fieldtype": "Text",
+   "label": "Essay Content"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Video'",
+   "fieldname": "section_break_video",
+   "fieldtype": "Section Break",
+   "label": "Video Content"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Video'",
+   "fieldname": "video_title",
+   "fieldtype": "Data",
+   "label": "Video Title"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Video'",
+   "fieldname": "video_url",
+   "fieldtype": "Data",
+   "label": "Video URL"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Video'",
+   "fieldname": "video_description",
+   "fieldtype": "Text",
+   "label": "Video Description"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Video'",
+   "fieldname": "video_content",
+   "fieldtype": "Attach",
+   "label": "Video Content"
+  },
+  {
+   "fieldname": "section_break_6",
+   "fieldtype": "Section Break",
+   "hidden": 1
+  },
+  {
    "description": "YouTube Video will appear at the top of the lesson.",
    "fieldname": "youtube",
    "fieldtype": "Data",
    "label": "YouTube Video URL"
+  },
+  {
+   "fieldname": "column_break_9",
+   "fieldtype": "Column Break"
+  },
+  {
+   "description": "Quiz will appear at the bottom of the lesson.",
+   "fieldname": "quiz_id",
+   "fieldtype": "Data",
+   "label": "Quiz ID"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Quiz'",
+   "fieldname": "section_break_quiz",
+   "fieldtype": "Section Break",
+   "label": "Quiz Content"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Quiz'",
+   "fieldname": "quiz_title",
+   "fieldtype": "Data",
+   "label": "Quiz Title"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Quiz'",
+   "fieldname": "quiz_description",
+   "fieldtype": "Text",
+   "label": "Quiz Description"
+  },
+  {
+   "depends_on": "eval:doc.content_type=='Quiz'",
+   "fieldname": "quiz_questions",
+   "fieldtype": "Table",
+   "label": "Quiz Questions",
+   "options": "LMS Quiz Question"
   },
   {
    "fieldname": "section_break_16",
@@ -117,6 +251,10 @@
    "label": "Question"
   },
   {
+   "fieldname": "column_break_15",
+   "fieldtype": "Column Break"
+  },
+  {
    "fieldname": "file_type",
    "fieldtype": "Select",
    "label": "File Type",
@@ -124,44 +262,17 @@
    "options": "\nImage\nDocument\nPDF"
   },
   {
-   "fieldname": "column_break_15",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "instructor_notes",
-   "fieldtype": "Markdown Editor",
-   "label": "Instructor Notes"
-  },
-  {
-   "fieldname": "content",
-   "fieldtype": "Text",
-   "label": "Content"
-  },
-  {
-   "fieldname": "column_break_cjmf",
-   "fieldtype": "Column Break"
-  },
-  {
-   "fieldname": "instructor_content",
-   "fieldtype": "Text",
-   "label": "Instructor Content"
-  },
-  {
    "fieldname": "column_break_syza",
    "fieldtype": "Column Break"
   },
   {
-   "default": "0",
-   "fetch_from": "chapter.is_scorm_package",
-   "fieldname": "is_scorm_package",
-   "fieldtype": "Check",
-   "label": "Is SCORM Package",
-   "read_only": 1
+   "fieldname": "help",
+   "fieldtype": "HTML"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-04-10 15:19:22.400932",
+ "modified": "2025-09-28 18:39:00.749308",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "Course Lesson",
@@ -206,11 +317,24 @@
    "select": 1,
    "share": 1,
    "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "share": 1,
+   "write": 1
   }
  ],
  "row_format": "Dynamic",
- "sort_field": "modified",
- "sort_order": "DESC",
+ "sort_field": "content_order",
+ "sort_order": "ASC",
  "states": [],
+ "title_field": "title",
  "track_changes": 1
 }

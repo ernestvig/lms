@@ -16,6 +16,12 @@
    "in_list_view": 1,
    "label": "Education Level",
    "reqd": 1
+  },
+  {
+   "fieldname": "subjects",
+   "fieldtype": "Table",
+   "options": "Education Level Subject",
+   "label": "Subjects Available at this Level"
   }
  ],
  "grid_page_length": 50,
@@ -24,7 +30,7 @@
  "modified": "2025-09-17 17:06:44.286081",
  "modified_by": "Administrator",
  "module": "LMS",
- "name": "LMS Course Levels",
+ "name": "LMS Course Level",
  "naming_rule": "Expression",
  "owner": "Administrator",
  "permissions": [

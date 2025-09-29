@@ -60,7 +60,6 @@
   "education_level",
   "course_language",
   "subject",
-  "module_content",
   "video",
   "drafted"
  ],
@@ -293,7 +292,7 @@
    "fieldname": "education_level",
    "fieldtype": "Link",
    "label": "Education Level",
-   "options": "LMS Course Levels"
+   "options": "LMS Course Level"
   },
   {
    "fieldname": "course_language",
@@ -329,12 +328,6 @@
    "label": "Objectives"
   },
   {
-   "fieldname": "module_content",
-   "fieldtype": "Table",
-   "label": "Module Content",
-   "options": "LMS Course Module Content"
-  },
-  {
    "default": "0",
    "fieldname": "drafted",
    "fieldtype": "Check",
@@ -357,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-26 16:08:54.586684",
+ "modified": "2025-09-29 09:44:49.386542",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",

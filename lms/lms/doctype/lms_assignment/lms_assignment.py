@@ -569,7 +569,7 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 					{
 						"id": a.get("educational_level"),
 						"educational_level": frappe.db.get_value(
-							"LMS Course Levels", a.get("educational_level"), "education_level"
+							"LMS Course Level", a.get("educational_level"), "education_level"
 						),
 					}
 					if a.get("educational_level")
@@ -681,7 +681,7 @@ def get_assignment_details(assignment):
 					{
 						"id": a.get("educational_level"),
 						"educational_level": frappe.db.get_value(
-							"LMS Course Levels", a.get("educational_level"), "education_level"
+							"LMS Course Level", a.get("educational_level"), "education_level"
 						),
 					}
 					if a.get("educational_level")

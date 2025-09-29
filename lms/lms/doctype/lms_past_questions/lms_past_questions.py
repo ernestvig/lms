@@ -74,7 +74,7 @@ def get_tutor_past_questions(tutor):
 					{
 						"id": q.get("educational_level"),
 						"level_name": frappe.db.get_value(
-							"LMS Course Levels", q.get("educational_level"), "education_level"
+							"LMS Course Level", q.get("educational_level"), "education_level"
 						),
 					}
 					if q.get("educational_level")
@@ -151,7 +151,7 @@ def get_all_past_questions():
 					{
 						"id": q.get("educational_level"),
 						"level_name": frappe.db.get_value(
-							"LMS Course Levels", q.get("educational_level"), "education_level"
+							"LMS Course Level", q.get("educational_level"), "education_level"
 						),
 					}
 					if q.get("educational_level")
@@ -229,7 +229,7 @@ def get_past_question_details(past_question):
 					{
 						"id": q.get("educational_level"),
 						"level_name": frappe.db.get_value(
-							"LMS Course Levels", q.get("educational_level"), "education_level"
+							"LMS Course Level", q.get("educational_level"), "education_level"
 						),
 					}
 					if q.get("educational_level")
