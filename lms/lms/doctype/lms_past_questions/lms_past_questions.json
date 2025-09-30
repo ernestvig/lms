@@ -25,6 +25,7 @@
   "enable_comment",
   "public",
   "student_link",
+  "download_count",
   "payment_tab",
   "paid_past_question",
   "amount",
@@ -162,12 +163,19 @@
    "fieldtype": "Table",
    "label": "Comment",
    "options": "Past Question Comments"
+  },
+  {
+   "default": "0",
+   "fieldname": "download_count",
+   "fieldtype": "Int",
+   "label": "Download Count",
+   "read_only": 1
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-29 09:44:50.536560",
+ "modified": "2025-09-30 13:31:47.676459",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Past Questions",
