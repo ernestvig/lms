@@ -48,6 +48,7 @@ def get_tutor_past_questions(tutor):
 			"description",
 			"category",
 			"educational_level",
+			"download_count"
 		],
 	)
 
@@ -70,6 +71,7 @@ def get_tutor_past_questions(tutor):
 				"amount_usd": q.get("amount_usd"),
 				"file_url": q.get("file"),
 				"description": q.get("description"),
+				"download_count": q.get("download_count") or 0,
 				"educational_level": (
 					{
 						"id": q.get("educational_level"),
@@ -125,6 +127,7 @@ def get_all_past_questions():
 			"description",
 			"category",
 			"educational_level",
+			"download_count",
 		],
 	)
 
@@ -147,6 +150,7 @@ def get_all_past_questions():
 				"amount_usd": q.get("amount_usd"),
 				"file_url": q.get("file"),
 				"description": q.get("description"),
+				"download_count": q.get("download_count") or 0,
 				"educational_level": (
 					{
 						"id": q.get("educational_level"),
@@ -203,6 +207,7 @@ def get_past_question_details(past_question):
 			"description",
 			"category",
 			"educational_level",
+			"download_count"
 		],
 	)
 
@@ -225,6 +230,7 @@ def get_past_question_details(past_question):
 				"amount_usd": q.get("amount_usd"),
 				"file_url": q.get("file"),
 				"description": q.get("description"),
+				"download_count": q.get("download_count") or 0,
 				"educational_level": (
 					{
 						"id": q.get("educational_level"),
@@ -283,3 +289,16 @@ def get_past_question_count_kpi(tutor):
 		"student_demographics": student_demographics_count,
 		"total_earnings": "GHS 0",
 	}
+
+@frappe.whitelist()
+def increase_download_count(past_question):
+	if not past_question:
+		return {"success": False, "message": "Past question ID is required."}
+
+	try:
+		pq_doc = frappe.get_doc("LMS Past Questions", past_question)
+		pq_doc.download_count = (pq_doc.download_count or 0) + 1
+		pq_doc.save(ignore_permissions=True,)
+		return {"success": True, "download_count": pq_doc.download_count}
+	except Exception as e:
+		return {"success": False, "message": str(e)}
