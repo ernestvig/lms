@@ -689,13 +689,11 @@ def get_assignment_details(assignment):
 			}
 		)
 
-	return [
-		{
+	return {
 			"success": True,
 			"message": "Assignments fetched successfully",
 			"data": result,
 		}
-	]
 
 
 @frappe.whitelist()
