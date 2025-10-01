@@ -636,53 +636,53 @@ def get_assignment_details(assignment):
 		)
 
 	result = {
-				"id": assignment.get("name"),
-				"title": assignment.get("title"),
-				"type": assignment.get("type"),
-				"question": assignment.get("question"),
-				"created_at": assignment.get("creation"),
-				"description": assignment.get("instructions") or assignment.get("description"),
-				"file": assignment.get("file"),
-				"resource_link": assignment.get("resource_link"),
-				"show_answers": assignment.get("show_answers"),
-				"due_date": assignment.get("due_date"),
-				"total_marks": assignment.get("total_score"),
-				"submitted": a.get("submitted"),
-				"drafted": a.get("drafted"),
-				"grade_assignment": a.get("grade_assignment"),
-				"is_public": a.get("public"),
-				"status": a.get("status"),
+				"id": assignment.name,
+				"title": assignment.title,
+				"type": assignment.type,
+				"question": assignment.question,
+				"created_at": assignment.creation,
+				"description": assignment.instructions or assignment.description,
+				"file": assignment.file,
+				"resource_link": assignment.resource_link,
+				"show_answers": assignment.show_answers,
+				"due_date": assignment.due_date,
+				"total_marks": assignment.total_score,
+				"submitted": assignment.submitted,
+				"drafted": assignment.drafted,
+				"grade_assignment": assignment.grade_assignment,
+				"is_public": assignment.public,
+				"status": assignment.status,
 				"quiz_questions": [
 					{
-						"id": q.get("name"),
-						"question": q.get("question"),
-						"question_type": q.get("question_type"),
-						"marks": q.get("marks"),
-						"option_a": q.get("option_a"),
-						"option_b": q.get("option_b"),
-						"option_c": q.get("option_c"),
-						"option_d": q.get("option_d"),
-						"correct_answer": q.get("correct_answer"),
-						"explanation": q.get("explanation"),
+						"id": q.name,
+						"question": q.question,
+						"question_type": q.question_type,
+						"marks": q.marks,
+						"option_a": q.option_a,
+						"option_b": q.option_b,
+						"option_c": q.option_c,
+						"option_d": q.option_d,
+						"correct_answer": q.correct_answer,
+						"explanation": q.explanation,
 					}
 					for q in quiz_questions
 				],
 				"subject": (
 					{
-						"id": a.get("subject"),
-						"subject_name": frappe.db.get_value("Subject", a.get("subject"), "subject_name"),
+						"id": assignment.subject,
+						"subject_name": frappe.db.get_value("Subject", assignment.subject, "subject_name"),
 					}
-					if a.get("subject")
+					if assignment.subject
 					else None
 				),
 				"educational_level": (
 					{
-						"id": a.get("educational_level"),
+						"id": assignment.educational_level,
 						"educational_level": frappe.db.get_value(
-							"LMS Course Level", a.get("educational_level"), "education_level"
+							"LMS Course Level", assignment.educational_level, "education_level"
 						),
 					}
-					if a.get("educational_level")
+					if assignment.educational_level
 					else None
 				),
 		}
