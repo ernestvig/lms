@@ -374,17 +374,16 @@ def get_assignments_for_student(student_email):
 	Get all assignments assigned to a specific student
 	"""
 	try:
-		assignments = frappe.db.sql(
-			"""
-            SELECT DISTINCT a.name, a.title, a.type, a.due_date, a.grade_assignment,
-                   a.show_answer, a.creation, a.owner as instructor
-            FROM `tabLMS Assignment` a
-            INNER JOIN `tabAssignment Student` ast ON ast.parent = a.name
-            WHERE ast.students = %(student_email)s
-            ORDER BY a.due_date ASC
-        """,
-			{"student_email": student_email},
-			as_dict=True,
+		assignment_names = frappe.get_all(
+			"PL Students",
+			filters={"students": student_email},
+			fields=["parent"],
+		)
+
+		assignments = frappe.get_all(
+			"LMS Assignment",
+			filters={"name": ["in", [a.parent for a in assignment_names]]},
+			fields=["*"]
 		)
 
 		return {"success": True, "data": assignments, "count": len(assignments)}
