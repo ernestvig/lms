@@ -616,11 +616,11 @@ def get_assignment_details(assignment):
 	if not assignments:
 		return {"success": False, "message": "Assignment not found"}
 
-	result = []
-	for a in assignments:
-		quiz_questions = frappe.get_all(
+	# result = []
+	assignment = assignments[0]
+	quiz_questions = frappe.get_all(
 			"LMS Quiz Question",
-			filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
+			filters={"parent": assignment.get("name"), "parenttype": "LMS Assignment"},	
 			fields=[
 				"name",
 				"question",
@@ -635,19 +635,18 @@ def get_assignment_details(assignment):
 			],
 		)
 
-		result.append(
-			{
-				"id": a.get("name"),
-				"title": a.get("title"),
-				"type": a.get("type"),
-				"question": a.get("question"),
-				"created_at": a.get("creation"),
-				"description": a.get("instructions") or a.get("description"),
-				"file": a.get("file"),
-				"resource_link": a.get("resource_link"),
-				"show_answers": a.get("show_answers"),
-				"due_date": a.get("due_date"),
-				"total_marks": a.get("total_score"),
+	result = {
+				"id": assignment.get("name"),
+				"title": assignment.get("title"),
+				"type": assignment.get("type"),
+				"question": assignment.get("question"),
+				"created_at": assignment.get("creation"),
+				"description": assignment.get("instructions") or assignment.get("description"),
+				"file": assignment.get("file"),
+				"resource_link": assignment.get("resource_link"),
+				"show_answers": assignment.get("show_answers"),
+				"due_date": assignment.get("due_date"),
+				"total_marks": assignment.get("total_score"),
 				"submitted": a.get("submitted"),
 				"drafted": a.get("drafted"),
 				"grade_assignment": a.get("grade_assignment"),
@@ -686,8 +685,7 @@ def get_assignment_details(assignment):
 					if a.get("educational_level")
 					else None
 				),
-			}
-		)
+		}
 
 	return {
 			"success": True,
