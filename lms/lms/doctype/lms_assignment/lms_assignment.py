@@ -540,6 +540,7 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 				"drafted": a.get("drafted"),
 				"grade_assignment": a.get("grade_assignment"),
 				"is_public": a.get("public"),
+				"status": a.get("status"),	
 				"quiz_questions": [
 					{
 						"id": q.get("name"),
@@ -653,6 +654,7 @@ def get_assignment_details(assignment):
 				"drafted": a.get("drafted"),
 				"grade_assignment": a.get("grade_assignment"),
 				"is_public": a.get("public"),
+				"status": a.get("status"),
 				"quiz_questions": [
 					{
 						"id": q.get("name"),
