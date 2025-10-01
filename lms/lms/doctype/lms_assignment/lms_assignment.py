@@ -578,13 +578,11 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 			}
 		)
 
-	return [
-		{
+	return {
 			"success": True,
 			"message": "Assignments fetched successfully",
 			"data": result,
 		}
-	]
 
 
 @frappe.whitelist()
