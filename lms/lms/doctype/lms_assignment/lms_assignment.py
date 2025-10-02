@@ -635,6 +635,18 @@ def get_assignment_details(assignment):
 			],
 		)
 
+	# Get recipients
+	recipients = frappe.db.sql(
+			"""
+            SELECT students
+            FROM `tabAssignment Student`
+            WHERE parent = %(assignment)s
+            ORDER BY idx
+        """,
+			{"assignment": assignment},
+			as_dict=True,
+		)
+
 	result = {
 				"id": assignment.name,
 				"title": assignment.title,
@@ -652,6 +664,7 @@ def get_assignment_details(assignment):
 				"grade_assignment": assignment.grade_assignment,
 				"is_public": assignment.public,
 				"status": assignment.status,
+				"recipients": recipients,
 				"quiz_questions": [
 					{
 						"id": q.name,
