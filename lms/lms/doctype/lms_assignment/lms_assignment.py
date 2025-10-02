@@ -617,10 +617,10 @@ def get_assignment_details(assignment):
 		return {"success": False, "message": "Assignment not found"}
 
 	# result = []
-	assignment = assignments[0]
+	assignment_doc = assignments[0]
 	quiz_questions = frappe.get_all(
 			"LMS Quiz Question",
-			filters={"parent": assignment.get("name"), "parenttype": "LMS Assignment"},	
+			filters={"parent": assignment_doc.name, "parenttype": "LMS Assignment"},	
 			fields=[
 				"name",
 				"question",
@@ -648,22 +648,22 @@ def get_assignment_details(assignment):
 		)
 
 	result = {
-				"id": assignment.name,
-				"title": assignment.title,
-				"type": assignment.type,
-				"question": assignment.question,
-				"created_at": assignment.creation,
-				"description": assignment.instructions or assignment.description,
-				"file": assignment.file,
-				"resource_link": assignment.resource_link,
-				"show_answers": assignment.show_answers,
-				"due_date": assignment.due_date,
-				"total_marks": assignment.total_score,
-				"submitted": assignment.submitted,
-				"drafted": assignment.drafted,
-				"grade_assignment": assignment.grade_assignment,
-				"is_public": assignment.public,
-				"status": assignment.status,
+				"id": assignment_doc.name,
+				"title": assignment_doc.title,
+				"type": assignment_doc.type,
+				"question": assignment_doc.question,
+				"created_at": assignment_doc.creation,
+				"description": assignment_doc.instructions or assignment_doc.description,
+				"file": assignment_doc.file,
+				"resource_link": assignment_doc.resource_link,
+				"show_answers": assignment_doc.show_answers,
+				"due_date": assignment_doc.due_date,
+				"total_marks": assignment_doc.total_score,
+				"submitted": assignment_doc.submitted,
+				"drafted": assignment_doc.drafted,
+				"grade_assignment": assignment_doc.grade_assignment,
+				"is_public": assignment_doc.public,
+				"status": assignment_doc.status,
 				"recipients": recipients,
 				"quiz_questions": [
 					{
@@ -682,20 +682,20 @@ def get_assignment_details(assignment):
 				],
 				"subject": (
 					{
-						"id": assignment.subject,
-						"subject_name": frappe.db.get_value("Subject", assignment.subject, "subject_name"),
+						"id": assignment_doc.subject,
+						"subject_name": frappe.db.get_value("Subject", assignment_doc.subject, "subject_name"),
 					}
-					if assignment.subject
+					if assignment_doc.subject
 					else None
 				),
 				"educational_level": (
 					{
-						"id": assignment.educational_level,
+						"id": assignment_doc.educational_level,
 						"educational_level": frappe.db.get_value(
-							"LMS Course Level", assignment.educational_level, "education_level"
+							"LMS Course Level", assignment_doc.educational_level, "education_level"
 						),
 					}
-					if assignment.educational_level
+					if assignment_doc.educational_level
 					else None
 				),
 		}
