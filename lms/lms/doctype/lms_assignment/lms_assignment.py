@@ -639,7 +639,7 @@ def get_assignment_details(assignment):
 	recipients = frappe.db.sql(
 			"""
             SELECT students
-            FROM `tabAssignment Student`
+            FROM `tabPL Students`
             WHERE parent = %(assignment)s
             ORDER BY idx
         """,
