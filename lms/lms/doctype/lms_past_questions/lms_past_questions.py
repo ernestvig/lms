@@ -56,6 +56,7 @@ def get_tutor_past_questions(tutor):
 		"success": True,
 		"past_questions": [
 			{
+				"Doctype": "LMS Past Questions",
 				"id": q["name"],
 				"title": q.get("title"),
 				"drafted": q.get("drafted"),
@@ -135,6 +136,7 @@ def get_all_past_questions():
 		"success": True,
 		"past_questions": [
 			{
+				"Doctype": "LMS Past Questions",
 				"id": q["name"],
 				"title": q.get("title"),
 				"drafted": q.get("drafted"),
@@ -215,6 +217,7 @@ def get_past_question_details(past_question):
 		"success": True,
 		"past_questions": [
 			{
+				"Doctype": "LMS Past Questions",
 				"id": q["name"],
 				"title": q.get("title"),
 				"drafted": q.get("drafted"),
