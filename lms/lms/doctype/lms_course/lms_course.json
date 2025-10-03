@@ -314,7 +314,7 @@
   },
   {
    "fieldname": "video",
-   "fieldtype": "Attach",
+   "fieldtype": "Data",
    "label": "Introduction video"
   },
   {
@@ -350,7 +350,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-09-29 13:14:15.934314",
+ "modified": "2025-10-03 12:48:36.274607",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
