@@ -647,6 +647,7 @@ def get_assignment_details(assignment):
 	)
 
 	result = {
+		"Doctype": "LMS Past Questions",
 		"id": assignment_doc.name,
 		"title": assignment_doc.title,
 		"type": assignment_doc.type,
