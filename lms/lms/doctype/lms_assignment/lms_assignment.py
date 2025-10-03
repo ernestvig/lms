@@ -256,16 +256,16 @@ def add_quiz_questions_to_assignment():
 			# Insert directly into database
 			frappe.db.sql(
 				"""
-                INSERT INTO `tabLMS Quiz Question`
-                (name, question, question_type, option_a, option_b, option_c, option_d,
-                 correct_answer, marks, points, parent, parenttype, parentfield, idx,
-                 creation, modified, modified_by, owner, docstatus)
-                VALUES
-                (%(name)s, %(question)s, %(question_type)s, %(option_a)s, %(option_b)s,
-                 %(option_c)s, %(option_d)s, %(correct_answer)s, %(marks)s, %(points)s,
-                 %(parent)s, 'LMS Assignment', 'quiz_questions', %(idx)s, %(creation)s,
-                 %(modified)s, %(modified_by)s, %(owner)s, 0)
-            """,
+				INSERT INTO `tabLMS Quiz Question`
+				(name, question, question_type, option_a, option_b, option_c, option_d,
+				 correct_answer, marks, points, parent, parenttype, parentfield, idx,
+				 creation, modified, modified_by, owner, docstatus)
+				VALUES
+				(%(name)s, %(question)s, %(question_type)s, %(option_a)s, %(option_b)s,
+				 %(option_c)s, %(option_d)s, %(correct_answer)s, %(marks)s, %(points)s,
+				 %(parent)s, 'LMS Assignment', 'quiz_questions', %(idx)s, %(creation)s,
+				 %(modified)s, %(modified_by)s, %(owner)s, 0)
+			""",
 				{
 					"name": question_name,
 					"question": question_data.get("question", ""),
@@ -317,11 +317,11 @@ def get_enhanced_assignment_detail(assignment_name):
 		# Get assignment basic info
 		assignment_data = frappe.db.sql(
 			"""
-            SELECT name, title, company, question, type, grade_assignment, file,
-                   resource_links, show_answer, answer, due_date, creation, owner
-            FROM `tabLMS Assignment`
-            WHERE name = %(assignment_name)s
-        """,
+			SELECT name, title, company, question, type, grade_assignment, file,
+				   resource_links, show_answer, answer, due_date, creation, owner
+			FROM `tabLMS Assignment`
+			WHERE name = %(assignment_name)s
+		""",
 			{"assignment_name": assignment_name},
 			as_dict=True,
 		)
@@ -334,11 +334,11 @@ def get_enhanced_assignment_detail(assignment_name):
 		# Get recipients
 		recipients = frappe.db.sql(
 			"""
-            SELECT students
-            FROM `tabAssignment Student`
-            WHERE parent = %(assignment_name)s
-            ORDER BY idx
-        """,
+			SELECT students
+			FROM `tabAssignment Student`
+			WHERE parent = %(assignment_name)s
+			ORDER BY idx
+		""",
 			{"assignment_name": assignment_name},
 			as_dict=True,
 		)
@@ -348,12 +348,12 @@ def get_enhanced_assignment_detail(assignment_name):
 		if assignment.get("type") == "Quiz/Multiple choice":
 			quiz_questions = frappe.db.sql(
 				"""
-                SELECT question, question_type, option_a, option_b, option_c, option_d,
-                       correct_answer, marks, points
-                FROM `tabLMS Quiz Question`
-                WHERE parent = %(assignment_name)s
-                ORDER BY idx
-            """,
+				SELECT question, question_type, option_a, option_b, option_c, option_d,
+					   correct_answer, marks, points
+				FROM `tabLMS Quiz Question`
+				WHERE parent = %(assignment_name)s
+				ORDER BY idx
+			""",
 				{"assignment_name": assignment_name},
 				as_dict=True,
 			)
@@ -425,13 +425,13 @@ def submit_assignment_response():
 
 		frappe.db.sql(
 			"""
-            INSERT INTO `tabAssignment Submission`
-            (name, assignment, student, response_content, submitted_file, submission_date,
-             creation, modified, modified_by, owner, docstatus)
-            VALUES
-            (%(name)s, %(assignment)s, %(student)s, %(response_content)s, %(submitted_file)s,
-             %(submission_date)s, %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
-        """,
+			INSERT INTO `tabAssignment Submission`
+			(name, assignment, student, response_content, submitted_file, submission_date,
+			 creation, modified, modified_by, owner, docstatus)
+			VALUES
+			(%(name)s, %(assignment)s, %(student)s, %(response_content)s, %(submitted_file)s,
+			 %(submission_date)s, %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+		""",
 			{
 				"name": submission_name,
 				"assignment": assignment_name,
@@ -540,7 +540,7 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 				"drafted": a.get("drafted"),
 				"grade_assignment": a.get("grade_assignment"),
 				"is_public": a.get("public"),
-				"status": a.get("status"),	
+				"status": a.get("status"),
 				"quiz_questions": [
 					{
 						"id": q.get("name"),
@@ -616,95 +616,96 @@ def get_assignment_details(assignment):
 	if not assignments:
 		return {"success": False, "message": "Assignment not found"}
 
-	# result = []
 	assignment_doc = assignments[0]
 	quiz_questions = frappe.get_all(
-			"LMS Quiz Question",
-			filters={"parent": assignment_doc.name, "parenttype": "LMS Assignment"},	
-			fields=[
-				"name",
-				"question",
-				"question_type",
-				"marks",
-				"option_a",
-				"option_b",
-				"option_c",
-				"option_d",
-				"correct_answer",
-				"explanation",
-			],
-		)
+		"LMS Quiz Question",
+		filters={"parent": assignment_doc.name, "parenttype": "LMS Assignment"},
+		fields=[
+			"name",
+			"question",
+			"question_type",
+			"marks",
+			"option_a",
+			"option_b",
+			"option_c",
+			"option_d",
+			"correct_answer",
+			"explanation",
+		],
+	)
 
 	# Get recipients
 	recipients = frappe.db.sql(
-			"""
-            SELECT students as 'student'
-            FROM `tabPL Students`
-            WHERE parent = %(assignment)s
-            ORDER BY idx
-        """,
-			{"assignment": assignment},
-			as_dict=True,
-		)
+		"""
+		SELECT students as 'student'
+		FROM `tabPL Students`
+		WHERE parent = %(assignment)s
+		ORDER BY idx
+		""",
+		{"assignment": assignment},
+		as_dict=True,
+	)
 
 	result = {
-				"id": assignment_doc.name,
-				"title": assignment_doc.title,
-				"type": assignment_doc.type,
-				"question": assignment_doc.question,
-				"created_at": assignment_doc.creation,
-				"description": assignment_doc.instructions or assignment_doc.description,
-				"file": assignment_doc.file,
-				"resource_link": assignment_doc.resource_link,
-				"show_answers": assignment_doc.show_answers,
-				"due_date": assignment_doc.due_date,
-				"total_marks": assignment_doc.total_score,
-				"submitted": assignment_doc.submitted,
-				"drafted": assignment_doc.drafted,
-				"grade_assignment": assignment_doc.grade_assignment,
-				"is_public": assignment_doc.public,
-				"status": assignment_doc.status,
-				"recipients": recipients,
-				"quiz_questions": [
-					{
-						"id": q.name,
-						"question": q.question,
-						"question_type": q.question_type,
-						"marks": q.marks,
-						"option_a": q.option_a,
-						"option_b": q.option_b,
-						"option_c": q.option_c,
-						"option_d": q.option_d,
-						"correct_answer": q.correct_answer,
-						"explanation": q.explanation,
-					}
-					for q in quiz_questions
-				],
-				"subject": (
-					{
-						"id": assignment_doc.subject,
-						"subject_name": frappe.db.get_value("Subject", assignment_doc.subject, "subject_name"),
-					}
-					if assignment_doc.subject
-					else None
+		"id": assignment_doc.name,
+		"title": assignment_doc.title,
+		"type": assignment_doc.type,
+		"question": assignment_doc.question,
+		"created_at": assignment_doc.creation,
+		"description": assignment_doc.instructions,
+		"file": assignment_doc.file,
+		"resource_link": assignment_doc.resource_link,
+		"show_answers": assignment_doc.show_answer,  # Fixed: changed from show_answers
+		"due_date": assignment_doc.due_date,
+		"total_marks": assignment_doc.test_score,  # Fixed: changed from total_score
+		"submitted": assignment_doc.submitted,
+		"drafted": assignment_doc.drafted,
+		"grade_assignment": assignment_doc.grade_assignment,
+		"is_public": assignment_doc.public,
+		"status": assignment_doc.status,
+		"recipients": recipients,
+		"quiz_questions": [
+			{
+				"id": q.name,
+				"question": q.question,
+				"question_type": q.question_type,
+				"marks": q.marks,
+				"option_a": q.option_a,
+				"option_b": q.option_b,
+				"option_c": q.option_c,
+				"option_d": q.option_d,
+				"correct_answer": q.correct_answer,
+				"explanation": q.explanation,
+			}
+			for q in quiz_questions
+		],
+		"subject": (
+			{
+				"id": assignment_doc.subject,
+				"subject_name": frappe.db.get_value("Subject", assignment_doc.subject, "subject_name"),
+			}
+			if assignment_doc.subject
+			else None
+		),
+		"educational_level": (
+			{
+				"id": assignment_doc.educational_level,
+				"educational_level": frappe.db.get_value(
+					"LMS Course Level", 
+					assignment_doc.educational_level, 
+					"education_level"  
 				),
-				"educational_level": (
-					{
-						"id": assignment_doc.educational_level,
-						"educational_level": frappe.db.get_value(
-							"LMS Course Level", assignment_doc.educational_level, "education_level"
-						),
-					}
-					if assignment_doc.educational_level
-					else None
-				),
-		}
+			}
+			if assignment_doc.educational_level
+			else None
+		),
+	}
 
 	return {
-			"success": True,
-			"message": "Assignments fetched successfully",
-			"data": result,
-		}
+		"success": True,
+		"message": "Assignments fetched successfully",
+		"data": result,
+	}
 
 
 @frappe.whitelist()
