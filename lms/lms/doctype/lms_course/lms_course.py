@@ -497,7 +497,8 @@ def serialize_course(course_name):
 		"instructors": instructor_profiles,
 		"reviews": reviews_list,
 		"chapters": chapters_list,
-		"introductory_video": course.video
+		"introductory_video": course.video,
+		"Doctype": "LMS Course",
 	}
 
 
