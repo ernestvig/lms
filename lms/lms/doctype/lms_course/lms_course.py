@@ -1299,7 +1299,7 @@ def create_course_2():
 
 
 @frappe.whitelist(allow_guest=True)
-def get_course_detail(course_name):
+def get_course_detail_new(course_name):
 	"""
 	Fetch a course with its chapters and lessons using Frappe API.
 	"""
@@ -1647,7 +1647,7 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
 	# return {"success": True, "data": courses, "count": len(courses)}
 
 @frappe.whitelist(allow_guest=True)
-def get_course_detail_new(course_name):
+def get_course_detail(course_name):
 	"""
 	Fetch a course with its chapters and lessons using Frappe API.
 	"""
@@ -1915,7 +1915,8 @@ def serialize_course_new(course_name):
 		return {
 			"id": course.name,
 			"title": getattr(course, "title", ""),
-			"tags": getattr(course, "tags", ""),
+			# "tags": getattr(course, "tags", ""),
+			"tags": [tag.strip() for tag in getattr(course, "tags", "").split(",") if tag.strip()],
 			"status": getattr(course, "status", ""),
 			"image": getattr(course, "image", ""),
 			"published": getattr(course, "published", 0),
