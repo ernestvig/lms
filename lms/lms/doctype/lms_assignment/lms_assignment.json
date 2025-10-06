@@ -30,7 +30,9 @@
   "quiz_questions",
   "submitted",
   "drafted",
-  "public"
+  "public",
+  "late_submission",
+  "set_reminders"
  ],
  "fields": [
   {
@@ -147,7 +149,7 @@
   },
   {
    "fieldname": "resource_link",
-   "fieldtype": "Data",
+   "fieldtype": "JSON",
    "label": "Resource Links"
   },
   {
@@ -166,11 +168,23 @@
    "fieldname": "public",
    "fieldtype": "Check",
    "label": "Public"
+  },
+  {
+   "default": "0",
+   "fieldname": "late_submission",
+   "fieldtype": "Check",
+   "label": "Late Submission"
+  },
+  {
+   "default": "0",
+   "fieldname": "set_reminders",
+   "fieldtype": "Check",
+   "label": "Set Reminders"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-29 09:44:50.184017",
+ "modified": "2025-10-06 10:05:38.426629",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",
