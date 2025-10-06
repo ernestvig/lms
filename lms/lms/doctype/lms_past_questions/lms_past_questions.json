@@ -21,6 +21,7 @@
   "file_upload_section",
   "file",
   "include_answer",
+  "p_q_file_folder",
   "section_break_kmco",
   "enable_comment",
   "public",
@@ -170,12 +171,18 @@
    "fieldtype": "Int",
    "label": "Download Count",
    "read_only": 1
+  },
+  {
+   "fieldname": "p_q_file_folder",
+   "fieldtype": "Table",
+   "label": "Past Questions File folder",
+   "options": "Past Question File Folder"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-30 13:31:47.676459",
+ "modified": "2025-10-06 17:38:06.206492",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Past Questions",
