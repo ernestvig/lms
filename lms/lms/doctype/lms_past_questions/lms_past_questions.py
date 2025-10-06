@@ -26,252 +26,349 @@ class LMSPastQuestions(Document):
 
 @frappe.whitelist(allow_guest=True)
 def get_tutor_past_questions(tutor):
-	past_questions = frappe.get_all(
-		"LMS Past Questions",
-		filters={"owner": tutor},
-		fields=[
-			"name",
-			"title",
-			"subject",
-			"paid_past_question",
-			"amount",
-			"file",
-			"amount_usd",
-			"drafted",
-			"public",
-			"exam_type",
-			"question_type",
-			"academic_year",
-			"student_link",
-			"currency",
-			"enable_comment",
-			"description",
-			"category",
-			"educational_level",
-			"download_count"
-		],
-	)
+    """
+    Fetch all past questions created by a specific tutor.
+    Includes linked data such as subject, category, educational level,
+    comments, and attached file folder details.
+    """
+    try:
+        # 1️⃣ Fetch all LMS Past Questions owned by the given tutor
+        past_questions = frappe.get_all(
+            "LMS Past Questions",
+            filters={"owner": tutor},
+            fields=[
+                "name",
+                "title",
+                "subject",
+                "paid_past_question",
+                "amount",
+                "file",
+                "amount_usd",
+                "drafted",
+                "public",
+                "exam_type",
+                "question_type",
+                "academic_year",
+                "student_link",
+                "currency",
+                "enable_comment",
+                "description",
+                "category",
+                "educational_level",
+                "download_count",
+            ],
+        )
 
-	return {
-		"success": True,
-		"past_questions": [
-			{
-				"Doctype": "LMS Past Questions",
-				"id": q["name"],
-				"title": q.get("title"),
-				"drafted": q.get("drafted"),
-				"public": q.get("public"),
-				"exam_type": q.get("exam_type"),
-				"question_type": q.get("question_type"),
-				"academic_year": q.get("academic_year"),
-				"student_link": q.get("student_link"),
-				"paid_past_question": q.get("paid_past_question"),
-				"amount": q.get("amount"),
-				"currency": q.get("currency"),
-				"enable_comment": q.get("enable_comment"),
-				"amount_usd": q.get("amount_usd"),
-				"file_url": q.get("file"),
-				"description": q.get("description"),
-				"download_count": q.get("download_count") or 0,
-				"educational_level": (
-					{
-						"id": q.get("educational_level"),
-						"level_name": frappe.db.get_value(
-							"LMS Course Level", q.get("educational_level"), "education_level"
-						),
-					}
-					if q.get("educational_level")
-					else None
-				),
-				"subject": (
-					{
-						"id": q.get("subject"),
-						"subject_name": frappe.db.get_value("Subject", q.get("subject"), "subject_name"),
-					}
-					if q.get("subject")
-					else None
-				),
-				"category": (
-					{
-						"id": q.get("category"),
-						"category_name": frappe.db.get_value("LMS Category", q.get("category"), "category"),
-					}
-					if q.get("category")
-					else None
-				),
-			}
-			for q in past_questions
-		],
-	}
+        # Check if tutor has no past questions
+        if not past_questions:
+            return {"success": True, "past_questions": []}
+
+        data = []
+        for q in past_questions:
+            # 2️⃣ Fetch child table: Past Question File Folder
+            file_folders = frappe.get_all(
+                "Past Question File Folder",
+                filters={"parent": q["name"]},
+                fields=["files"],
+            )
+
+            # 3️⃣ Fetch child table: Past Question Comments
+            comments = frappe.get_all(
+                "Past Question Comments",
+                filters={"parent": q["name"]},
+                fields=["comment", "owner", "creation"],
+            )
+
+            # 4️⃣ Combine all into a structured JSON object
+            data.append({
+                "Doctype": "LMS Past Questions",
+                "id": q["name"],
+                "title": q.get("title"),
+                "drafted": q.get("drafted"),
+                "public": q.get("public"),
+                "exam_type": q.get("exam_type"),
+                "question_type": q.get("question_type"),
+                "academic_year": q.get("academic_year"),
+                "student_link": q.get("student_link"),
+                "paid_past_question": q.get("paid_past_question"),
+                "amount": q.get("amount"),
+                "currency": q.get("currency"),
+                "enable_comment": q.get("enable_comment"),
+                "amount_usd": q.get("amount_usd"),
+                "file_url": q.get("file"),
+                "description": q.get("description"),
+                "download_count": q.get("download_count") or 0,
+
+                # Linked DocType: LMS Course Level
+                "educational_level": (
+                    {
+                        "id": q.get("educational_level"),
+                        "level_name": frappe.db.get_value(
+                            "LMS Course Level",
+                            q.get("educational_level"),
+                            "education_level"
+                        ),
+                    } if q.get("educational_level") else None
+                ),
+
+                # Linked DocType: Subject
+                "subject": (
+                    {
+                        "id": q.get("subject"),
+                        "subject_name": frappe.db.get_value(
+                            "Subject",
+                            q.get("subject"),
+                            "subject_name"
+                        ),
+                    } if q.get("subject") else None
+                ),
+
+                # Linked DocType: LMS Category
+                "category": (
+                    {
+                        "id": q.get("category"),
+                        "category_name": frappe.db.get_value(
+                            "LMS Category",
+                            q.get("category"),
+                            "category"
+                        ),
+                    } if q.get("category") else None
+                ),
+
+                # ✅ Child Table: File Folder
+                "p_q_file_folder": file_folders or [],
+
+                # ✅ Child Table: Comments
+                "comments": comments or [],
+            })
+
+        # 5️⃣ Return success response
+        return {"success": True, "past_questions": data}
+
+    except Exception as e:
+        # Log errors for debugging
+        frappe.log_error(frappe.get_traceback(), "get_tutor_past_questions Error")
+        return {"success": False, "error": str(e)}
 
 
 @frappe.whitelist(allow_guest=True)
 def get_all_past_questions():
-	past_questions = frappe.get_all(
-		"LMS Past Questions",
-		fields=[
-			"name",
-			"title",
-			"subject",
-			"paid_past_question",
-			"amount",
-			"file",
-			"amount_usd",
-			"drafted",
-			"public",
-			"exam_type",
-			"question_type",
-			"academic_year",
-			"student_link",
-			"currency",
-			"enable_comment",
-			"description",
-			"category",
-			"educational_level",
-			"download_count",
-		],
-	)
+    """
+    Fetch all LMS Past Questions with their metadata, including linked subject,
+    category, and educational level information. Supports both paid and free questions.
+    """
+    try:
+        # Fetch all records from LMS Past Questions
+        past_questions = frappe.get_all(
+            "LMS Past Questions",
+            fields=[
+                "name",
+                "title",
+                "subject",
+                "paid_past_question",
+                "amount",
+                "file",
+                "amount_usd",
+                "drafted",
+                "public",
+                "exam_type",
+                "question_type",
+                "academic_year",
+                "student_link",
+                "currency",
+                "enable_comment",
+                "description",
+                "category",
+                "educational_level",
+                "download_count",
+            ],
+        )
 
-	return {
-		"success": True,
-		"past_questions": [
-			{
-				"Doctype": "LMS Past Questions",
-				"id": q["name"],
-				"title": q.get("title"),
-				"drafted": q.get("drafted"),
-				"public": q.get("public"),
-				"exam_type": q.get("exam_type"),
-				"question_type": q.get("question_type"),
-				"academic_year": q.get("academic_year"),
-				"student_link": q.get("student_link"),
-				"paid_past_question": q.get("paid_past_question"),
-				"amount": q.get("amount"),
-				"currency": q.get("currency"),
-				"enable_comment": q.get("enable_comment"),
-				"amount_usd": q.get("amount_usd"),
-				"file_url": q.get("file"),
-				"description": q.get("description"),
-				"download_count": q.get("download_count") or 0,
-				"educational_level": (
-					{
-						"id": q.get("educational_level"),
-						"level_name": frappe.db.get_value(
-							"LMS Course Level", q.get("educational_level"), "education_level"
-						),
-					}
-					if q.get("educational_level")
-					else None
-				),
-				"subject": (
-					{
-						"id": q.get("subject"),
-						"subject_name": frappe.db.get_value("Subject", q.get("subject"), "subject_name"),
-					}
-					if q.get("subject")
-					else None
-				),
-				"category": (
-					{
-						"id": q.get("category"),
-						"category_name": frappe.db.get_value("LMS Category", q.get("category"), "category"),
-					}
-					if q.get("category")
-					else None
-				),
-			}
-			for q in past_questions
-		],
-	}
+        # Build the response
+        data = []
+        for q in past_questions:
+            # Get child table items for Past Question File Folder
+            file_folders = frappe.get_all(
+                "Past Question File Folder",
+                filters={"parent": q["name"]},
+                fields=["files"],
+            )
+
+            data.append({
+                "Doctype": "LMS Past Questions",
+                "id": q["name"],
+                "title": q.get("title"),
+                "drafted": q.get("drafted"),
+                "public": q.get("public"),
+                "exam_type": q.get("exam_type"),
+                "question_type": q.get("question_type"),
+                "academic_year": q.get("academic_year"),
+                "student_link": q.get("student_link"),
+                "paid_past_question": q.get("paid_past_question"),
+                "amount": q.get("amount"),
+                "currency": q.get("currency"),
+                "enable_comment": q.get("enable_comment"),
+                "amount_usd": q.get("amount_usd"),
+                "file_url": q.get("file"),
+                "description": q.get("description"),
+                "download_count": q.get("download_count") or 0,
+                "educational_level": (
+                    {
+                        "id": q.get("educational_level"),
+                        "level_name": frappe.db.get_value(
+                            "LMS Course Level",
+                            q.get("educational_level"),
+                            "education_level"
+                        ),
+                    }
+                    if q.get("educational_level") else None
+                ),
+                "subject": (
+                    {
+                        "id": q.get("subject"),
+                        "subject_name": frappe.db.get_value(
+                            "Subject", q.get("subject"), "subject_name"
+                        ),
+                    }
+                    if q.get("subject") else None
+                ),
+                "category": (
+                    {
+                        "id": q.get("category"),
+                        "category_name": frappe.db.get_value(
+                            "LMS Category", q.get("category"), "category"
+                        ),
+                    }
+                    if q.get("category") else None
+                ),
+                # Correct handling of Table field
+                "p_q_file_folder": file_folders or [],
+            })
+
+        return {"success": True, "past_questions": data}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "get_all_past_questions Error")
+        return {"success": False, "error": str(e)}
 
 
 @frappe.whitelist(allow_guest=True)
 def get_past_question_details(past_question):
-	past_questions = frappe.get_all(
-		"LMS Past Questions",
-		filters={"name": past_question},
-		fields=[
-			"name",
-			"title",
-			"subject",
-			"paid_past_question",
-			"amount",
-			"file",
-			"amount_usd",
-			"drafted",
-			"public",
-			"exam_type",
-			"question_type",
-			"academic_year",
-			"student_link",
-			"currency",
-			"enable_comment",
-			"description",
-			"category",
-			"educational_level",
-			"download_count"
-		],
-	)
+    """
+    Fetch detailed information about a specific Past Question.
+    Includes related subject, category, educational level,
+    comments, and file folder entries.
+    """
+    try:
+        # 1️⃣ Fetch the main past question record
+        past_questions = frappe.get_all(
+            "LMS Past Questions",
+            filters={"name": past_question},
+            fields=[
+                "name",
+                "title",
+                "subject",
+                "paid_past_question",
+                "amount",
+                "file",
+                "amount_usd",
+                "drafted",
+                "public",
+                "exam_type",
+                "question_type",
+                "academic_year",
+                "student_link",
+                "currency",
+                "enable_comment",
+                "description",
+                "category",
+                "educational_level",
+                "download_count",
+            ],
+        )
 
-	return {
-		"success": True,
-		"past_questions": [
-			{
-				"Doctype": "LMS Past Questions",
-				"id": q["name"],
-				"title": q.get("title"),
-				"drafted": q.get("drafted"),
-				"public": q.get("public"),
-				"exam_type": q.get("exam_type"),
-				"question_type": q.get("question_type"),
-				"academic_year": q.get("academic_year"),
-				"student_link": q.get("student_link"),
-				"paid_past_question": q.get("paid_past_question"),
-				"amount": q.get("amount"),
-				"currency": q.get("currency"),
-				"enable_comment": q.get("enable_comment"),
-				"amount_usd": q.get("amount_usd"),
-				"file_url": q.get("file"),
-				"description": q.get("description"),
-				"download_count": q.get("download_count") or 0,
-				"educational_level": (
-					{
-						"id": q.get("educational_level"),
-						"level_name": frappe.db.get_value(
-							"LMS Course Level", q.get("educational_level"), "education_level"
-						),
-					}
-					if q.get("educational_level")
-					else None
-				),
-				"subject": (
-					{
-						"id": q.get("subject"),
-						"subject_name": frappe.db.get_value("Subject", q.get("subject"), "subject_name"),
-					}
-					if q.get("subject")
-					else None
-				),
-				"category": (
-					{
-						"id": q.get("category"),
-						"category_name": frappe.db.get_value("LMS Category", q.get("category"), "category"),
-					}
-					if q.get("category")
-					else None
-				),
-				"comments": (
-					{
-						"id": q.get("comments"),
-						"comment": frappe.db.get_value("Past Question Comment", q.get("comments"), "comment"),
-					}
-					if q.get("comments")
-					else None
-				),
-			}
-			for q in past_questions
-		],
-	}
+        if not past_questions:
+            return {"success": False, "error": "Past question not found"}
+
+        data = []
+        for q in past_questions:
+            # 2️⃣ Fetch child table: Past Question File Folder
+            file_folders = frappe.get_all(
+                "Past Question File Folder",
+                filters={"parent": q["name"]},
+                fields=["files"],
+            )
+
+            # 3️⃣ Fetch child table: Past Question Comments
+            comments = frappe.get_all(
+                "Past Question Comments",
+                filters={"parent": q["name"]},
+                fields=["comment", "owner", "creation"],
+            )
+
+            # 4️⃣ Append final structured data
+            data.append({
+                "Doctype": "LMS Past Questions",
+                "id": q["name"],
+                "title": q.get("title"),
+                "drafted": q.get("drafted"),
+                "public": q.get("public"),
+                "exam_type": q.get("exam_type"),
+                "question_type": q.get("question_type"),
+                "academic_year": q.get("academic_year"),
+                "student_link": q.get("student_link"),
+                "paid_past_question": q.get("paid_past_question"),
+                "amount": q.get("amount"),
+                "currency": q.get("currency"),
+                "enable_comment": q.get("enable_comment"),
+                "amount_usd": q.get("amount_usd"),
+                "file_url": q.get("file"),
+                "description": q.get("description"),
+                "download_count": q.get("download_count") or 0,
+
+                # Linked DocType: LMS Course Level
+                "educational_level": (
+                    {
+                        "id": q.get("educational_level"),
+                        "level_name": frappe.db.get_value(
+                            "LMS Course Level", q.get("educational_level"), "education_level"
+                        ),
+                    } if q.get("educational_level") else None
+                ),
+
+                # Linked DocType: Subject
+                "subject": (
+                    {
+                        "id": q.get("subject"),
+                        "subject_name": frappe.db.get_value(
+                            "Subject", q.get("subject"), "subject_name"
+                        ),
+                    } if q.get("subject") else None
+                ),
+
+                # Linked DocType: LMS Category
+                "category": (
+                    {
+                        "id": q.get("category"),
+                        "category_name": frappe.db.get_value(
+                            "LMS Category", q.get("category"), "category"
+                        ),
+                    } if q.get("category") else None
+                ),
+
+                # ✅ Table field: File Folder items
+                "p_q_file_folder": file_folders or [],
+
+                # ✅ Table field: Comments
+                "comments": comments or [],
+            })
+
+        return {"success": True, "past_question_details": data}
+
+    except Exception as e:
+        # Log full traceback for debugging
+        frappe.log_error(frappe.get_traceback(), "get_past_question_details Error")
+        return {"success": False, "error": str(e)}
 
 
 @frappe.whitelist(allow_guest=True)
