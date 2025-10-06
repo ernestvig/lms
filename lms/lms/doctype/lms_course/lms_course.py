@@ -1310,6 +1310,7 @@ def get_course_detail_new(course_name):
 
 		course_doc = frappe.get_doc("LMS Course", course_name)
 		course = {
+			"doctype": "LMS Course",
 			"name": course_doc.name,
 			"title": course_doc.title,
 			"description": course_doc.description,
@@ -1650,16 +1651,31 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
 def get_course_detail(course_name):
 	"""
 	Fetch a course with its chapters and lessons using Frappe API.
+	Adds enrollment status for the current session user.
 	"""
 	try:
 		if not frappe.db.exists("LMS Course", course_name):
 			return {"error": "Course not found"}
 
 		course_data = serialize_course_new(course_name)
-		
 		if course_data is None:
 			return {"error": "Failed to serialize course data"}
-		
+
+		# Determine enrollment status for logged-in user
+		session_user = frappe.session.user
+		if session_user and session_user != "Guest":
+			is_enrolled = frappe.db.exists(
+				"LMS Enrollment",
+				{
+					"course": course_name,
+					"member": session_user,
+					"member_type": "Student"
+				}
+			)
+			course_data["enrollment_status"] = "enrolled" if is_enrolled else "not_enrolled"
+		else:
+			course_data["enrollment_status"] = "not_enrolled"
+
 		return {
 			"success": True,
 			"data": course_data
@@ -1678,22 +1694,23 @@ def serialize_course_new(course_name):
 		instructors = []
 		try:
 			instructor_links = frappe.get_all(
-				"Course Instructor", 
-				filters={"parent": course.name}, 
+				"Course Instructor",
+				filters={"parent": course.name},
 				fields=["instructor"]
 			)
-			
+
 			for inst in instructor_links:
 				try:
 					profile_data = frappe.get_value(
-						"User Profile", 
-						{"user": inst["instructor"]}, 
-						"*", 
+						"User Profile",
+						{"user": inst["instructor"]},
+						"*",
 						as_dict=True
 					)
 					if profile_data:
 						user_doc = frappe.get_doc("User", profile_data["user"])
 						instructors.append({
+							""
 							"id": profile_data.name,
 							"full_name": getattr(user_doc, "full_name", ""),
 							"email": getattr(user_doc, "email", ""),
@@ -1714,11 +1731,11 @@ def serialize_course_new(course_name):
 		reviews_list = []
 		try:
 			reviews = frappe.get_all(
-				"LMS Course Review", 
-				filters={"course": course.name}, 
+				"LMS Course Review",
+				filters={"course": course.name},
 				fields=["name", "rating", "review", "owner", "creation"]
 			)
-			
+
 			for r in reviews:
 				try:
 					reviewer_name = ""
@@ -1733,7 +1750,7 @@ def serialize_course_new(course_name):
 						if reviewer_data:
 							reviewer_name = reviewer_data[0].get("full_name", "")
 							reviewer_image = reviewer_data[0].get("user_image", "")
-					
+
 					reviews_list.append({
 						"id": r.name,
 						"reviewer_name": reviewer_name,
@@ -1779,9 +1796,9 @@ def serialize_course_new(course_name):
 		chapters_list = []
 		try:
 			chapters = frappe.get_all(
-				"Course Chapter", 
-				filters={"course": course.name}, 
-				fields=["name", "title", "idx"], 
+				"Course Chapter",
+				filters={"course": course.name},
+				fields=["name", "title", "idx"],
 				order_by="idx"
 			)
 		except Exception as e:
@@ -1791,13 +1808,13 @@ def serialize_course_new(course_name):
 		for chapter in chapters:
 			# Determine available lesson fields dynamically
 			lesson_fields = ["name", "title", "content_type", "content_order", "is_published"]
-			
+
 			try:
 				# Test if enhanced fields exist
 				test_lesson = frappe.get_all(
-					"Course Lesson", 
-					filters={"chapter": chapter.name}, 
-					fields=["name"], 
+					"Course Lesson",
+					filters={"chapter": chapter.name},
+					fields=["name"],
 					limit=1
 				)
 
@@ -1913,6 +1930,7 @@ def serialize_course_new(course_name):
 
 		# Final Structured Response with safe field access
 		return {
+			"doctype": "LMS Course",
 			"id": course.name,
 			"title": getattr(course, "title", ""),
 			# "tags": getattr(course, "tags", ""),

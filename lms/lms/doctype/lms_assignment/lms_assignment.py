@@ -541,6 +541,8 @@ def get_all_student_assignment(user, limit=None, **kwargs):
 				"grade_assignment": a.get("grade_assignment"),
 				"is_public": a.get("public"),
 				"status": a.get("status"),
+				"late_submissions": a.get("late_submission"),
+				"set_reminders" : a.get("set_reminders"),
 				"quiz_questions": [
 					{
 						"id": q.get("name"),
@@ -665,6 +667,8 @@ def get_assignment_details(assignment):
 		"is_public": assignment_doc.public,
 		"status": assignment_doc.status,
 		"recipients": recipients,
+		"late_submissions": assignment_doc.late_submission,
+		"set_reminders" : assignment_doc.set_reminders,
 		"quiz_questions": [
 			{
 				"id": q.name,
@@ -692,9 +696,9 @@ def get_assignment_details(assignment):
 			{
 				"id": assignment_doc.educational_level,
 				"educational_level": frappe.db.get_value(
-					"LMS Course Level", 
-					assignment_doc.educational_level, 
-					"education_level"  
+					"LMS Course Level",
+					assignment_doc.educational_level,
+					"education_level"
 				),
 			}
 			if assignment_doc.educational_level
