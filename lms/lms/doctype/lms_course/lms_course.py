@@ -1610,38 +1610,336 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Get Tutor Courses With Enrollments Failed")
 		return {"error": str(e), "success": False}
+	# """
+    # Get all courses where the tutor is an instructor and at least one student is enrolled.
+    # Optionally filter by course_name and status.
+    # """
+	# # Step 1: Get all course names where tutor is instructor
+	# course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
+
+	# # Step 2: Filter by course_name and status if provided
+	# course_filters = {}
+	# if course_name:
+	# 	course_filters["name"] = course_name
+	# if status:
+	# 	course_filters["status"] = status
+
+	# if course_filters:
+	# 	filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name"])
+	# 	filtered_course_names = set(c["name"] for c in filtered_courses)
+	# 	course_names = [name for name in course_names if name in filtered_course_names]
+
+	# courses = []
+	# for cname in course_names:
+	# 	# Get enrolled students for this course
+	# 	students = frappe.get_all(
+	# 		"LMS Enrollment", filters={"course": cname, "member_type": "Student"}, fields=["member"]
+	# 	)
+	# 	if students:
+	# 		enriched_students = []
+	# 		for s in students:
+	# 			user_profile = frappe.get_value("User Profile", {"user": s["member"]}, "*", as_dict=True)
+	# 			enriched_students.append(user_profile if user_profile else s)
+	# 		course_info = serialize_course(cname)
+	# 		course_info["enrolled_students"] = enriched_students
+	# 		courses.append(course_info)
+
+	# return {"success": True, "data": courses, "count": len(courses)}
+
+@frappe.whitelist(allow_guest=True)
+def get_course_detail_new(course_name):
 	"""
-    Get all courses where the tutor is an instructor and at least one student is enrolled.
-    Optionally filter by course_name and status.
-    """
-	# Step 1: Get all course names where tutor is instructor
-	course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
+	Fetch a course with its chapters and lessons using Frappe API.
+	"""
+	try:
+		if not frappe.db.exists("LMS Course", course_name):
+			return {"error": "Course not found"}
 
-	# Step 2: Filter by course_name and status if provided
-	course_filters = {}
-	if course_name:
-		course_filters["name"] = course_name
-	if status:
-		course_filters["status"] = status
+		course_data = serialize_course_new(course_name)
+		
+		if course_data is None:
+			return {"error": "Failed to serialize course data"}
+		
+		return {
+			"success": True,
+			"data": course_data
+		}
 
-	if course_filters:
-		filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name"])
-		filtered_course_names = set(c["name"] for c in filtered_courses)
-		course_names = [name for name in course_names if name in filtered_course_names]
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Get Course Detail Failed")
+		return {"error": str(e)}
 
-	courses = []
-	for cname in course_names:
-		# Get enrolled students for this course
-		students = frappe.get_all(
-			"LMS Enrollment", filters={"course": cname, "member_type": "Student"}, fields=["member"]
-		)
-		if students:
-			enriched_students = []
-			for s in students:
-				user_profile = frappe.get_value("User Profile", {"user": s["member"]}, "*", as_dict=True)
-				enriched_students.append(user_profile if user_profile else s)
-			course_info = serialize_course(cname)
-			course_info["enrolled_students"] = enriched_students
-			courses.append(course_info)
+def serialize_course_new(course_name):
+	"""Return a structured course with profile, chapters, and lessons"""
+	try:
+		course = frappe.get_doc("LMS Course", course_name)
 
-	return {"success": True, "data": courses, "count": len(courses)}
+		# Instructor(s) - with safe field access
+		instructors = []
+		try:
+			instructor_links = frappe.get_all(
+				"Course Instructor", 
+				filters={"parent": course.name}, 
+				fields=["instructor"]
+			)
+			
+			for inst in instructor_links:
+				try:
+					profile_data = frappe.get_value(
+						"User Profile", 
+						{"user": inst["instructor"]}, 
+						"*", 
+						as_dict=True
+					)
+					if profile_data:
+						user_doc = frappe.get_doc("User", profile_data["user"])
+						instructors.append({
+							"id": profile_data.name,
+							"full_name": getattr(user_doc, "full_name", ""),
+							"email": getattr(user_doc, "email", ""),
+							"phone_number": getattr(profile_data, "phone_number", ""),
+							"profile_image_url": getattr(user_doc, "user_image", ""),
+							"bio": getattr(profile_data, "bio", ""),
+							"rating": getattr(profile_data, "rating", 0),
+							"experience_years": getattr(profile_data, "teaching_experience", 0),
+							"subjects": json.loads(profile_data.subjects) if getattr(profile_data, "subjects", None) else [],
+						})
+				except Exception as e:
+					frappe.log_error(f"Failed to fetch instructor: {str(e)}", "serialize_course")
+					continue
+		except Exception as e:
+			frappe.log_error(f"Failed to fetch instructors: {str(e)}", "serialize_course")
+
+		# Reviews - with safe field access
+		reviews_list = []
+		try:
+			reviews = frappe.get_all(
+				"LMS Course Review", 
+				filters={"course": course.name}, 
+				fields=["name", "rating", "review", "owner", "creation"]
+			)
+			
+			for r in reviews:
+				try:
+					reviewer_name = ""
+					reviewer_image = ""
+					if r.get("owner"):
+						reviewer_data = frappe.get_all(
+							"User",
+							filters={"name": r.owner},
+							fields=["full_name", "user_image"],
+							limit=1
+						)
+						if reviewer_data:
+							reviewer_name = reviewer_data[0].get("full_name", "")
+							reviewer_image = reviewer_data[0].get("user_image", "")
+					
+					reviews_list.append({
+						"id": r.name,
+						"reviewer_name": reviewer_name,
+						"reviewer_image": reviewer_image,
+						"rating": r.get("rating", 0),
+						"comment": r.get("review", ""),
+						"date": r.get("creation", ""),
+					})
+				except Exception as e:
+					frappe.log_error(f"Failed to process review: {str(e)}", "serialize_course")
+					continue
+		except Exception as e:
+			frappe.log_error(f"Failed to fetch reviews: {str(e)}", "serialize_course")
+
+		# Subject - with safe field access
+		subject = None
+		try:
+			if getattr(course, "subject", None):
+				if frappe.db.exists("Subject", course.subject):
+					subject_doc = frappe.get_doc("Subject", course.subject)
+					subject = {
+						"name": subject_doc.name,
+						"subject_name": getattr(subject_doc, "subject_name", ""),
+					}
+		except Exception as e:
+			frappe.log_error(f"Failed to fetch subject: {str(e)}", "serialize_course")
+
+		# Educational Level - with safe field access
+		education_level = None
+		try:
+			course_level = getattr(course, "course_level", None) or getattr(course, "education_level", None)
+			if course_level:
+				if frappe.db.exists("LMS Course Level", course_level):
+					education_level_doc = frappe.get_doc("LMS Course Level", course_level)
+					education_level = {
+						"name": education_level_doc.name,
+						"level_name": getattr(education_level_doc, "education_level", ""),
+					}
+		except Exception as e:
+			frappe.log_error(f"Failed to fetch education level: {str(e)}", "serialize_course")
+
+		# Chapters & Lessons - with safe field access and fallbacks
+		chapters_list = []
+		try:
+			chapters = frappe.get_all(
+				"Course Chapter", 
+				filters={"course": course.name}, 
+				fields=["name", "title", "idx"], 
+				order_by="idx"
+			)
+		except Exception as e:
+			frappe.log_error(f"Course Chapter query failed: {str(e)}", "serialize_course")
+			chapters = []
+
+		for chapter in chapters:
+			# Determine available lesson fields dynamically
+			lesson_fields = ["name", "title", "content_type", "content_order", "is_published"]
+			
+			try:
+				# Test if enhanced fields exist
+				test_lesson = frappe.get_all(
+					"Course Lesson", 
+					filters={"chapter": chapter.name}, 
+					fields=["name"], 
+					limit=1
+				)
+
+				if test_lesson:
+					enhanced_fields = [
+						"essay_title", "essay_content",
+						"video_title", "video_url", "video_description", "video_content",
+						"quiz_title", "quiz_description",
+						"body", "content", "youtube", "quiz_id"
+					]
+					lesson_fields.extend(enhanced_fields)
+			except Exception:
+				pass  # Use basic fields only
+
+			# Fetch lessons
+			try:
+				lessons = frappe.get_all(
+					"Course Lesson",
+					filters={"chapter": chapter.name},
+					fields=lesson_fields,
+					order_by="content_order, idx",
+				)
+			except Exception as e:
+				frappe.log_error(f"Course Lesson query failed: {str(e)}", "serialize_course")
+				try:
+					lessons = frappe.get_all(
+						"Course Lesson",
+						filters={"chapter": chapter.name},
+						fields=["name", "title"],
+						order_by="idx",
+					)
+				except:
+					lessons = []
+
+			lessons_list = []
+			for lesson in lessons:
+				lesson_data = {
+					"id": lesson.get("name"),
+					"title": lesson.get("title", ""),
+					"content_type": lesson.get("content_type", "Lesson"),
+					"content_order": lesson.get("content_order", 1),
+					"is_published": lesson.get("is_published", 1),
+				}
+
+				# Handle Quiz questions
+				if lesson.get("content_type") == "Quiz":
+					quiz_questions = []
+					try:
+						questions = frappe.get_all(
+							"LMS Quiz Question",
+							filters={"parent": lesson["name"], "parenttype": "Course Lesson"},
+							fields=[
+								"name", "question", "question_type",
+								"option_a", "option_b", "option_c", "option_d",
+								"correct_answer", "marks"
+							],
+							order_by="idx",
+						)
+
+						# Convert question links to actual question text
+						for question in questions:
+							if question.get("question"):
+								try:
+									if frappe.db.exists("LMS Question", question["question"]):
+										lms_question = frappe.get_doc("LMS Question", question["question"])
+										question["question_text"] = getattr(lms_question, "question", question["question"])
+									else:
+										question["question_text"] = question["question"]
+								except Exception:
+									question["question_text"] = question["question"]
+							quiz_questions.append(question)
+					except Exception as e:
+						frappe.log_error(f"Quiz Questions query failed: {str(e)}", "serialize_course")
+
+					lesson_data["quiz"] = {
+						"title": lesson.get("quiz_title", ""),
+						"description": lesson.get("quiz_description", ""),
+						"questions": quiz_questions,
+						"quiz_id": lesson.get("quiz_id", ""),
+					}
+
+				elif lesson.get("content_type") == "Essay":
+					lesson_data["essay"] = {
+						"title": lesson.get("essay_title", ""),
+						"content": lesson.get("essay_content", ""),
+					}
+
+				elif lesson.get("content_type") == "Video":
+					lesson_data["video"] = {
+						"title": lesson.get("video_title", ""),
+						"description": lesson.get("video_description", ""),
+						"url": lesson.get("video_content") or lesson.get("video_url", ""),
+						"youtube_url": lesson.get("youtube", ""),
+					}
+
+				else:  # Default Lesson type
+					lesson_data["lesson"] = {
+						"body": lesson.get("body", ""),
+						"content": lesson.get("content", ""),
+						"youtube_url": lesson.get("youtube", ""),
+						"quiz_id": lesson.get("quiz_id", ""),
+					}
+
+				lessons_list.append(lesson_data)
+
+			chapters_list.append({
+				"id": chapter.name,
+				"title": chapter.get("title", ""),
+				"description": chapter.get("description", ""),
+				"idx": chapter.get("idx", 0),
+				"lessons": lessons_list,
+			})
+
+		# Final Structured Response with safe field access
+		return {
+			"id": course.name,
+			"title": getattr(course, "title", ""),
+			"tags": getattr(course, "tags", ""),
+			"status": getattr(course, "status", ""),
+			"image": getattr(course, "image", ""),
+			"published": getattr(course, "published", 0),
+			"published_on": getattr(course, "published_on", None),
+			"featured": getattr(course, "featured", 0),
+			"short_introduction": getattr(course, "short_introduction", ""),
+			"description": getattr(course, "description", ""),
+			"requirement": getattr(course, "requirement", ""),
+			"objectives": getattr(course, "objectives", ""),
+			"course_language": getattr(course, "course_language", ""),
+			"education_level": education_level,
+			"subject": subject,
+			"paid_course": getattr(course, "paid_course", 0),
+			"price": getattr(course, "course_price", 0),
+			"currency": getattr(course, "currency", ""),
+			"rating": getattr(course, "rating", 0),
+			"enrollments": getattr(course, "enrollments", 0),
+			"enable_certification": getattr(course, "enable_certification", 0),
+			"instructors": instructors,
+			"reviews": reviews_list,
+			"chapters": chapters_list,
+			"introductory_video": getattr(course, "video", "")
+		}
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Serialize Course Failed")
+		return None
