@@ -124,10 +124,13 @@ def get_assignment(lesson):
 
 
 @frappe.whitelist()
-def grade_assignment(name, result, comments):
+def grade_assignment(name, result, comments, score, totalScore,file):
 	doc = frappe.get_doc("LMS Assignment Submission", name)
 	doc.status = result
 	doc.comments = comments
+	doc.score = score
+	doc.total_score = totalScore
+	doc.file = file
 	doc.save(ignore_permissions=True)
 	return {"message": "Assignment graded successfully."}
 
