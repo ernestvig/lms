@@ -249,3 +249,26 @@ def get_student_submitted_assignments(student):
 	)
 
 	return {"success": True, "data": submitted_assignments}
+
+#get all the submissions for an assignment created by a tutor
+@frappe.whitelist()
+def get_all_assignment_submissions(tutor):
+	assignments = frappe.get_all(
+		"LMS Assignment",
+		filters={"owner": tutor},
+		fields=["name", "title"],
+	)
+
+	if not assignments:
+		return {"success": True, "data": []}
+
+	assignment_ids = [a.name for a in assignments]
+
+	submissions = frappe.get_all(
+		"LMS Assignment Submission",
+		filters={"assignment": ["in", assignment_ids]},
+		fields=["*"],
+		order_by="creation desc",
+	)
+
+	return {"success": True, "data": submissions}
