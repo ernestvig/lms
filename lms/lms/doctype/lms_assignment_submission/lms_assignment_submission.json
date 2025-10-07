@@ -26,7 +26,9 @@
   "quiz_answers",
   "column_break_esgd",
   "course",
-  "lesson"
+  "lesson",
+  "score",
+  "total_score"
  ],
  "fields": [
   {
@@ -151,13 +153,23 @@
    "fieldtype": "Table",
    "label": "Quiz Answers",
    "options": "LMS Quiz Answer"
+  },
+  {
+   "fieldname": "score",
+   "fieldtype": "Int",
+   "label": "Score"
+  },
+  {
+   "fieldname": "total_score",
+   "fieldtype": "Int",
+   "label": "Total Score"
   }
  ],
  "grid_page_length": 50,
  "index_web_pages_for_search": 1,
  "links": [],
  "make_attachments_public": 1,
- "modified": "2025-09-24 14:20:21.798718",
+ "modified": "2025-10-07 18:39:23.684767",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment Submission",
