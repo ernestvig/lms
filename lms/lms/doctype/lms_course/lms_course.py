@@ -748,6 +748,396 @@ def create_course():
 		frappe.log_error(frappe.get_traceback(), "Course Creation Failed")
 		return {"error": str(e), "traceback": frappe.get_traceback()}
 
+@frappe.whitelist()
+def update_course():
+	"""
+	Update an existing course with chapters, lessons, and settings.
+	Handles updating, creating new, and deleting removed chapters/lessons/questions.
+	Maintains proper parent-child relationships and naming conventions.
+	"""
+	import json
+
+	try:
+		data = {}
+		if frappe.request and frappe.request.data:
+			data = json.loads(frappe.request.data)
+
+		course_name = data.get("course_name")
+		if not course_name:
+			return {"error": "course_name is required for update"}
+
+		# Check if course exists
+		if not frappe.db.exists("LMS Course", course_name):
+			return {"error": f"Course {course_name} not found"}
+
+		# Get existing course
+		course_doc = frappe.get_doc("LMS Course", course_name)
+
+		# === Update course fields ===
+		course_doc.title = data.get("title", course_doc.title)
+		course_doc.description = data.get("courseDescription", course_doc.description)
+		course_doc.short_introduction = data.get("courseDescription", course_doc.short_introduction)[:500]
+		course_doc.image = data.get("thumbnailImage", course_doc.image)
+		course_doc.video = data.get("introductoryVideo", course_doc.video)
+		course_doc.tags = (
+			",".join(data.get("tags", []))
+			if isinstance(data.get("tags"), list)
+			else data.get("tagCategory", course_doc.tags)
+		)
+		course_doc.category = data.get("category", course_doc.category)
+		course_doc.education_level = data.get("educationLevel", course_doc.education_level)
+		course_doc.course_language = data.get("courseLanguage", course_doc.course_language)
+		course_doc.paid_course = 1 if data.get("pricingModel") == "paid" else 0
+		course_doc.course_price = data.get("price", 0) if data.get("pricingModel") == "paid" else 0
+		course_doc.currency = "USD" if data.get("pricingModel") == "paid" else course_doc.currency
+		course_doc.requirement = data.get("requirements", course_doc.requirement)
+		course_doc.objectives = data.get("courseObjective", course_doc.objectives)
+		course_doc.published = 1 if data.get("visibility") == "public" else 0
+		course_doc.draft = 0 if data.get("visibility") == "public" else 1
+		course_doc.enable_certification = 1 if data.get("issueCertificate", False) else 0
+
+		# Update instructor
+		if data.get("instructor"):
+			course_doc.instructors = []
+			course_doc.append("instructors", {"instructor": data.get("instructor")})
+
+		# Save course basic info first
+		course_doc.save(ignore_permissions=True)
+
+		# === Track existing and new data ===
+		existing_chapters = {
+			ch.chapter: ch for ch in frappe.get_all(
+				"Course Chapter",
+				filters={"course": course_name},
+				fields=["name", "title"]
+			)
+		}
+		
+		chapters_to_keep = set()
+		chapters_data = []
+		lessons_created = []
+		lessons_updated = []
+		quiz_questions_created = []
+		quiz_questions_updated = []
+
+		# === Process incoming chapter data ===
+		if "modules" in data:
+			for chapter_idx, module_data in enumerate(data["modules"]):
+				chapter_name = module_data.get("chapter_name")  # Optional: to update existing
+				chapter_title = module_data.get("title", "")
+				
+				# Determine if updating or creating
+				chapter_doc = None
+				if chapter_name and frappe.db.exists("Course Chapter", chapter_name):
+					# Update existing chapter
+					chapter_doc = frappe.get_doc("Course Chapter", chapter_name)
+					chapter_doc.title = chapter_title
+					chapter_doc.save(ignore_permissions=True)
+					chapters_to_keep.add(chapter_name)
+				else:
+					# Create new chapter
+					chapter_doc = frappe.new_doc("Course Chapter")
+					chapter_doc.course = course_name
+					chapter_doc.title = chapter_title
+					chapter_doc.insert(ignore_permissions=True)
+					chapters_to_keep.add(chapter_doc.name)
+
+				chapter_info = {
+					"name": chapter_doc.name,
+					"title": chapter_doc.title,
+					"lessons": []
+				}
+
+				# Get existing lessons for this chapter
+				existing_lessons = {
+					lesson.name: lesson for lesson in frappe.get_all(
+						"Course Lesson",
+						filters={"chapter": chapter_doc.name},
+						fields=["name", "title", "content_type"]
+					)
+				}
+				
+				lessons_to_keep = set()
+
+				# Process content blocks (lessons)
+				if "contentBlocks" in module_data:
+					for block_idx, content_block in enumerate(module_data["contentBlocks"]):
+						lesson_name = content_block.get("lesson_name")  # Optional: to update existing
+						content_type = content_block.get("type", "Lesson").title()
+						content_data = content_block.get("data", {})
+						lesson_title = content_block.get("title", "")
+
+						lesson_doc = None
+						is_new_lesson = False
+
+						if lesson_name and frappe.db.exists("Course Lesson", lesson_name):
+							# Update existing lesson
+							lesson_doc = frappe.get_doc("Course Lesson", lesson_name)
+							lesson_doc.title = lesson_title
+							lesson_doc.content_type = content_type
+							lesson_doc.content_order = block_idx + 1
+							lessons_to_keep.add(lesson_name)
+						else:
+							# Create new lesson
+							lesson_doc = frappe.new_doc("Course Lesson")
+							lesson_doc.chapter = chapter_doc.name
+							lesson_doc.course = course_name
+							lesson_doc.title = lesson_title
+							lesson_doc.content_type = content_type
+							lesson_doc.content_order = block_idx + 1
+							lesson_doc.is_published = 1
+							is_new_lesson = True
+
+						# Update content based on type
+						content_type_lower = content_type.lower()
+						
+						if content_type_lower == "essay":
+							lesson_doc.essay_title = lesson_title
+							lesson_doc.essay_content = content_data.get("content", "")
+						elif content_type_lower == "video":
+							lesson_doc.video_title = lesson_title
+							lesson_doc.video_url = content_data.get("videoUrl", "")
+							lesson_doc.video_description = content_data.get("description", "")
+						elif content_type_lower == "quiz":
+							lesson_doc.quiz_title = lesson_title
+							lesson_doc.quiz_description = content_data.get("description", "")
+
+						if is_new_lesson:
+							lesson_doc.insert(ignore_permissions=True)
+							lessons_to_keep.add(lesson_doc.name)
+							lessons_created.append({
+								"name": lesson_doc.name,
+								"type": content_type_lower,
+								"title": lesson_doc.title,
+								"chapter": chapter_doc.name
+							})
+						else:
+							lesson_doc.save(ignore_permissions=True)
+							lessons_updated.append({
+								"name": lesson_doc.name,
+								"type": content_type_lower,
+								"title": lesson_doc.title,
+								"chapter": chapter_doc.name
+							})
+
+						# Handle quiz questions
+						if content_type_lower == "quiz" and "questions" in content_data:
+							# Get existing quiz questions for this lesson
+							existing_quiz_questions = frappe.get_all(
+								"LMS Quiz Question",
+								filters={
+									"parent": lesson_doc.name,
+									"parenttype": "Course Lesson"
+								},
+								fields=["name", "question"]
+							)
+							
+							existing_quiz_q_dict = {q.name: q for q in existing_quiz_questions}
+							quiz_questions_to_keep = set()
+
+							for q_idx, question_data in enumerate(content_data["questions"]):
+								quiz_question_name = question_data.get("quiz_question_name")
+								
+								# Check if updating or creating
+								if quiz_question_name and frappe.db.exists("LMS Quiz Question", quiz_question_name):
+									# Update existing quiz question and its LMS Question
+									quiz_question_doc = frappe.get_doc("LMS Quiz Question", quiz_question_name)
+									lms_question_doc = frappe.get_doc("LMS Question", quiz_question_doc.question)
+									
+									# Update LMS Question
+									lms_question_doc.question = question_data.get("question", "")
+									options = question_data.get("options", [])
+									if len(options) > 0:
+										lms_question_doc.option_1 = options[0]
+									if len(options) > 1:
+										lms_question_doc.option_2 = options[1]
+									if len(options) > 2:
+										lms_question_doc.option_3 = options[2]
+									if len(options) > 3:
+										lms_question_doc.option_4 = options[3]
+
+									correct_answer_index = question_data.get("correctAnswer", 0)
+									lms_question_doc.is_correct_1 = 1 if correct_answer_index == 0 else 0
+									lms_question_doc.is_correct_2 = 1 if correct_answer_index == 1 else 0
+									lms_question_doc.is_correct_3 = 1 if correct_answer_index == 2 else 0
+									lms_question_doc.is_correct_4 = 1 if correct_answer_index == 3 else 0
+									lms_question_doc.save(ignore_permissions=True)
+
+									# Update Quiz Question
+									quiz_question_doc.marks = int(question_data.get("mark", 1))
+									quiz_question_doc.points = int(question_data.get("mark", 1))
+									correct_answer_letter = (
+										["A", "B", "C", "D"][correct_answer_index] if correct_answer_index < 4 else "A"
+									)
+									quiz_question_doc.correct_answer = correct_answer_letter
+									quiz_question_doc.option_a = options[0] if len(options) > 0 else ""
+									quiz_question_doc.option_b = options[1] if len(options) > 1 else ""
+									quiz_question_doc.option_c = options[2] if len(options) > 2 else ""
+									quiz_question_doc.option_d = options[3] if len(options) > 3 else ""
+									quiz_question_doc.explanation = question_data.get("explanation", "")
+									quiz_question_doc.idx = q_idx + 1
+									quiz_question_doc.save(ignore_permissions=True)
+									
+									quiz_questions_to_keep.add(quiz_question_name)
+									quiz_questions_updated.append({
+										"lms_question_name": lms_question_doc.name,
+										"quiz_question_name": quiz_question_doc.name,
+										"question": question_data.get("question", ""),
+										"lesson": lesson_doc.name
+									})
+								else:
+									# Create new quiz question
+									lms_question_doc = frappe.new_doc("LMS Question")
+									lms_question_doc.question = question_data.get("question", "")
+									lms_question_doc.type = "Choices"
+									lms_question_doc.multiple = 0
+
+									options = question_data.get("options", [])
+									if len(options) > 0:
+										lms_question_doc.option_1 = options[0]
+									if len(options) > 1:
+										lms_question_doc.option_2 = options[1]
+									if len(options) > 2:
+										lms_question_doc.option_3 = options[2]
+									if len(options) > 3:
+										lms_question_doc.option_4 = options[3]
+
+									correct_answer_index = question_data.get("correctAnswer", 0)
+									lms_question_doc.is_correct_1 = 1 if correct_answer_index == 0 else 0
+									lms_question_doc.is_correct_2 = 1 if correct_answer_index == 1 else 0
+									lms_question_doc.is_correct_3 = 1 if correct_answer_index == 2 else 0
+									lms_question_doc.is_correct_4 = 1 if correct_answer_index == 3 else 0
+									lms_question_doc.insert(ignore_permissions=True)
+
+									quiz_question_doc = frappe.new_doc("LMS Quiz Question")
+									quiz_question_doc.question = lms_question_doc.name
+									quiz_question_doc.marks = int(question_data.get("mark", 1))
+									quiz_question_doc.question_type = "Multiple Choice"
+									quiz_question_doc.points = int(question_data.get("mark", 1))
+									quiz_question_doc.is_required = 0
+
+									correct_answer_letter = (
+										["A", "B", "C", "D"][correct_answer_index] if correct_answer_index < 4 else "A"
+									)
+									quiz_question_doc.correct_answer = correct_answer_letter
+									quiz_question_doc.option_a = options[0] if len(options) > 0 else ""
+									quiz_question_doc.option_b = options[1] if len(options) > 1 else ""
+									quiz_question_doc.option_c = options[2] if len(options) > 2 else ""
+									quiz_question_doc.option_d = options[3] if len(options) > 3 else ""
+									quiz_question_doc.explanation = question_data.get("explanation", "")
+									quiz_question_doc.parent = lesson_doc.name
+									quiz_question_doc.parenttype = "Course Lesson"
+									quiz_question_doc.parentfield = "quiz_questions"
+									quiz_question_doc.idx = q_idx + 1
+									quiz_question_doc.insert(ignore_permissions=True)
+
+									quiz_questions_to_keep.add(quiz_question_doc.name)
+									quiz_questions_created.append({
+										"lms_question_name": lms_question_doc.name,
+										"quiz_question_name": quiz_question_doc.name,
+										"question": question_data.get("question", ""),
+										"lesson": lesson_doc.name
+									})
+
+							# Delete removed quiz questions
+							for existing_q_name in existing_quiz_q_dict:
+								if existing_q_name not in quiz_questions_to_keep:
+									quiz_q_doc = frappe.get_doc("LMS Quiz Question", existing_q_name)
+									lms_q_name = quiz_q_doc.question
+									frappe.delete_doc("LMS Quiz Question", existing_q_name, ignore_permissions=True)
+									if frappe.db.exists("LMS Question", lms_q_name):
+										frappe.delete_doc("LMS Question", lms_q_name, ignore_permissions=True)
+
+						chapter_info["lessons"].append({
+							"name": lesson_doc.name,
+							"title": lesson_doc.title
+						})
+
+				# Delete removed lessons from this chapter
+				for existing_lesson_name in existing_lessons:
+					if existing_lesson_name not in lessons_to_keep:
+						# Delete quiz questions first if it's a quiz lesson
+						quiz_questions = frappe.get_all(
+							"LMS Quiz Question",
+							filters={"parent": existing_lesson_name, "parenttype": "Course Lesson"},
+							fields=["name", "question"]
+						)
+						for qq in quiz_questions:
+							frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
+							if frappe.db.exists("LMS Question", qq.question):
+								frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
+						
+						# Delete the lesson
+						frappe.delete_doc("Course Lesson", existing_lesson_name, ignore_permissions=True)
+
+				# Update chapter's lesson child table
+				chapter_doc = frappe.get_doc("Course Chapter", chapter_doc.name)
+				chapter_doc.lessons = []
+				for lesson_info in chapter_info["lessons"]:
+					chapter_doc.append("lessons", {"lesson": lesson_info["name"]})
+				chapter_doc.save(ignore_permissions=True)
+
+				chapters_data.append(chapter_info)
+
+		# Delete removed chapters
+		for existing_chapter_name in existing_chapters:
+			if existing_chapter_name not in chapters_to_keep:
+				# Delete all lessons in this chapter
+				lessons = frappe.get_all(
+					"Course Lesson",
+					filters={"chapter": existing_chapter_name},
+					fields=["name"]
+				)
+				for lesson in lessons:
+					# Delete quiz questions first
+					quiz_questions = frappe.get_all(
+						"LMS Quiz Question",
+						filters={"parent": lesson.name, "parenttype": "Course Lesson"},
+						fields=["name", "question"]
+					)
+					for qq in quiz_questions:
+						frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
+						if frappe.db.exists("LMS Question", qq.question):
+							frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
+					
+					frappe.delete_doc("Course Lesson", lesson.name, ignore_permissions=True)
+				
+				# Delete the chapter
+				frappe.delete_doc("Course Chapter", existing_chapter_name, ignore_permissions=True)
+
+		# Update course's chapter child table
+		course_update = frappe.get_doc("LMS Course", course_name)
+		course_update.chapters = []
+		for chapter_info in chapters_data:
+			course_update.append("chapters", {"chapter": chapter_info["name"]})
+		course_update.save(ignore_permissions=True)
+
+		# Commit all changes
+		frappe.db.commit()
+
+		return {
+			"success": True,
+			"message": "Course updated successfully",
+			"data": {
+				"course_name": course_name,
+				"course_title": course_update.title,
+				"chapters_count": len(chapters_data),
+				"lessons_created": len(lessons_created),
+				"lessons_updated": len(lessons_updated),
+				"quiz_questions_created": len(quiz_questions_created),
+				"quiz_questions_updated": len(quiz_questions_updated),
+				"chapters": chapters_data,
+				"new_lessons": lessons_created,
+				"updated_lessons": lessons_updated,
+				"new_quiz_questions": quiz_questions_created,
+				"updated_quiz_questions": quiz_questions_updated
+			}
+		}
+
+	except Exception as e:
+		frappe.db.rollback()
+		frappe.log_error(frappe.get_traceback(), "Course Update Failed")
+		return {"error": str(e), "traceback": frappe.get_traceback()}
 
 @frappe.whitelist()
 def create_course_final():
