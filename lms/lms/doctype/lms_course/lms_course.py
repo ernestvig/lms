@@ -812,7 +812,7 @@ def update_course():
 				fields=["name", "title"]
 			)
 		}
-		
+
 		chapters_to_keep = set()
 		chapters_data = []
 		lessons_created = []
@@ -825,7 +825,7 @@ def update_course():
 			for chapter_idx, module_data in enumerate(data["modules"]):
 				chapter_name = module_data.get("chapter_name")  # Optional: to update existing
 				chapter_title = module_data.get("title", "")
-				
+
 				# Determine if updating or creating
 				chapter_doc = None
 				if chapter_name and frappe.db.exists("Course Chapter", chapter_name):
@@ -856,7 +856,7 @@ def update_course():
 						fields=["name", "title", "content_type"]
 					)
 				}
-				
+
 				lessons_to_keep = set()
 
 				# Process content blocks (lessons)
@@ -890,7 +890,7 @@ def update_course():
 
 						# Update content based on type
 						content_type_lower = content_type.lower()
-						
+
 						if content_type_lower == "essay":
 							lesson_doc.essay_title = lesson_title
 							lesson_doc.essay_content = content_data.get("content", "")
@@ -931,19 +931,19 @@ def update_course():
 								},
 								fields=["name", "question"]
 							)
-							
+
 							existing_quiz_q_dict = {q.name: q for q in existing_quiz_questions}
 							quiz_questions_to_keep = set()
 
 							for q_idx, question_data in enumerate(content_data["questions"]):
 								quiz_question_name = question_data.get("quiz_question_name")
-								
+
 								# Check if updating or creating
 								if quiz_question_name and frappe.db.exists("LMS Quiz Question", quiz_question_name):
 									# Update existing quiz question and its LMS Question
 									quiz_question_doc = frappe.get_doc("LMS Quiz Question", quiz_question_name)
 									lms_question_doc = frappe.get_doc("LMS Question", quiz_question_doc.question)
-									
+
 									# Update LMS Question
 									lms_question_doc.question = question_data.get("question", "")
 									options = question_data.get("options", [])
@@ -977,7 +977,7 @@ def update_course():
 									quiz_question_doc.explanation = question_data.get("explanation", "")
 									quiz_question_doc.idx = q_idx + 1
 									quiz_question_doc.save(ignore_permissions=True)
-									
+
 									quiz_questions_to_keep.add(quiz_question_name)
 									quiz_questions_updated.append({
 										"lms_question_name": lms_question_doc.name,
@@ -1066,7 +1066,7 @@ def update_course():
 							frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
 							if frappe.db.exists("LMS Question", qq.question):
 								frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
-						
+
 						# Delete the lesson
 						frappe.delete_doc("Course Lesson", existing_lesson_name, ignore_permissions=True)
 
@@ -1099,9 +1099,9 @@ def update_course():
 						frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
 						if frappe.db.exists("LMS Question", qq.question):
 							frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
-					
+
 					frappe.delete_doc("Course Lesson", lesson.name, ignore_permissions=True)
-				
+
 				# Delete the chapter
 				frappe.delete_doc("Course Chapter", existing_chapter_name, ignore_permissions=True)
 
@@ -1396,17 +1396,17 @@ def create_course_2():
 		# Insert course
 		frappe.db.sql(
 			"""
-            INSERT INTO `tabLMS Course`
-            (name, title, description, short_introduction, image, video, tags, category,
-             education_level, course_language, paid_course, course_price, currency,
-             requirement, objectives, published, enable_certification, creation, modified,
-             modified_by, owner, docstatus)
-            VALUES
-            (%(name)s, %(title)s, %(description)s, %(short_introduction)s, %(image)s, %(video)s,
-             %(tags)s, %(category)s, %(education_level)s, %(course_language)s, %(paid_course)s,
-             %(course_price)s, %(currency)s, %(requirement)s, %(objectives)s, %(published)s,
-             %(enable_certification)s, %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, %(docstatus)s)
-        """,
+			INSERT INTO `tabLMS Course`
+			(name, title, description, short_introduction, image, video, tags, category,
+			 education_level, course_language, paid_course, course_price, currency,
+			 requirement, objectives, published, enable_certification, creation, modified,
+			 modified_by, owner, docstatus)
+			VALUES
+			(%(name)s, %(title)s, %(description)s, %(short_introduction)s, %(image)s, %(video)s,
+			 %(tags)s, %(category)s, %(education_level)s, %(course_language)s, %(paid_course)s,
+			 %(course_price)s, %(currency)s, %(requirement)s, %(objectives)s, %(published)s,
+			 %(enable_certification)s, %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, %(docstatus)s)
+		""",
 			course_fields,
 		)
 
@@ -1414,13 +1414,13 @@ def create_course_2():
 		instructor_name = generate_hash(length=10)
 		frappe.db.sql(
 			"""
-            INSERT INTO `tabCourse Instructor`
-            (name, instructor, parent, parenttype, parentfield, idx, creation, modified,
-             modified_by, owner, docstatus)
-            VALUES
-            (%(name)s, %(instructor)s, %(parent)s, 'LMS Course', 'instructors', 1,
-             %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
-        """,
+			INSERT INTO `tabCourse Instructor`
+			(name, instructor, parent, parenttype, parentfield, idx, creation, modified,
+			 modified_by, owner, docstatus)
+			VALUES
+			(%(name)s, %(instructor)s, %(parent)s, 'LMS Course', 'instructors', 1,
+			 %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+		""",
 			{
 				"name": instructor_name,
 				"instructor": data.get("instructor", owner),  # Use provided instructor or current user
@@ -1451,13 +1451,13 @@ def create_course_2():
 				# Insert Course Chapter
 				frappe.db.sql(
 					"""
-                    INSERT INTO `tabCourse Chapter`
-                    (name, course, title, description, idx, creation, modified,
-                     modified_by, owner, docstatus)
-                    VALUES
-                    (%(name)s, %(course)s, %(title)s, %(description)s, %(idx)s,
-                     %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
-                """,
+					INSERT INTO `tabCourse Chapter`
+					(name, course, title, description, idx, creation, modified,
+					 modified_by, owner, docstatus)
+					VALUES
+					(%(name)s, %(course)s, %(title)s, %(description)s, %(idx)s,
+					 %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+				""",
 					{
 						"name": chapter_name,
 						"course": course_name,
@@ -1528,16 +1528,16 @@ def create_course_2():
 						# Insert Course Lesson
 						frappe.db.sql(
 							"""
-                            INSERT INTO `tabCourse Lesson`
-                            (name, chapter, course, title, content_type, content_order, is_published,
-                             essay_title, essay_content, video_title, video_url, video_description,
-                             quiz_title, quiz_description, creation, modified, modified_by, owner, docstatus)
-                            VALUES
-                            (%(name)s, %(chapter)s, %(course)s, %(title)s, %(content_type)s, %(content_order)s,
-                             %(is_published)s, %(essay_title)s, %(essay_content)s, %(video_title)s,
-                             %(video_url)s, %(video_description)s, %(quiz_title)s, %(quiz_description)s,
-                             %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
-                        """,
+							INSERT INTO `tabCourse Lesson`
+							(name, chapter, course, title, content_type, content_order, is_published,
+							 essay_title, essay_content, video_title, video_url, video_description,
+							 quiz_title, quiz_description, creation, modified, modified_by, owner, docstatus)
+							VALUES
+							(%(name)s, %(chapter)s, %(course)s, %(title)s, %(content_type)s, %(content_order)s,
+							 %(is_published)s, %(essay_title)s, %(essay_content)s, %(video_title)s,
+							 %(video_url)s, %(video_description)s, %(quiz_title)s, %(quiz_description)s,
+							 %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+						""",
 							{
 								"name": lesson_name,
 								"chapter": chapter_name,
@@ -1583,16 +1583,16 @@ def create_course_2():
 								# Insert LMS Question
 								frappe.db.sql(
 									"""
-                                    INSERT INTO `tabLMS Question`
-                                    (name, question, type, multiple, option_1, is_correct_1, option_2, is_correct_2,
-                                     option_3, is_correct_3, option_4, is_correct_4, creation, modified,
-                                     modified_by, owner, docstatus)
-                                    VALUES
-                                    (%(name)s, %(question)s, 'Choices', 0, %(option_1)s, %(is_correct_1)s,
-                                     %(option_2)s, %(is_correct_2)s, %(option_3)s, %(is_correct_3)s,
-                                     %(option_4)s, %(is_correct_4)s, %(creation)s, %(modified)s,
-                                     %(modified_by)s, %(owner)s, 0)
-                                """,
+									INSERT INTO `tabLMS Question`
+									(name, question, type, multiple, option_1, is_correct_1, option_2, is_correct_2,
+									 option_3, is_correct_3, option_4, is_correct_4, creation, modified,
+									 modified_by, owner, docstatus)
+									VALUES
+									(%(name)s, %(question)s, 'Choices', 0, %(option_1)s, %(is_correct_1)s,
+									 %(option_2)s, %(is_correct_2)s, %(option_3)s, %(is_correct_3)s,
+									 %(option_4)s, %(is_correct_4)s, %(creation)s, %(modified)s,
+									 %(modified_by)s, %(owner)s, 0)
+								""",
 									{
 										"name": lms_question_name,
 										"question": question_data.get("question", ""),
@@ -1623,16 +1623,16 @@ def create_course_2():
 
 								frappe.db.sql(
 									"""
-                                    INSERT INTO `tabLMS Quiz Question`
-                                    (name, question, marks, question_type, points, is_required, correct_answer,
-                                     option_a, option_b, option_c, option_d, explanation, parent, parenttype,
-                                     parentfield, idx, creation, modified, modified_by, owner, docstatus)
-                                    VALUES
-                                    (%(name)s, %(question_link)s, %(marks)s, 'Multiple Choice', %(points)s, 0,
-                                     %(correct_answer)s, %(option_a)s, %(option_b)s, %(option_c)s, %(option_d)s,
-                                     %(explanation)s, %(parent)s, 'Course Lesson', 'quiz_questions', %(idx)s,
-                                     %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
-                                """,
+									INSERT INTO `tabLMS Quiz Question`
+									(name, question, marks, question_type, points, is_required, correct_answer,
+									 option_a, option_b, option_c, option_d, explanation, parent, parenttype,
+									 parentfield, idx, creation, modified, modified_by, owner, docstatus)
+									VALUES
+									(%(name)s, %(question_link)s, %(marks)s, 'Multiple Choice', %(points)s, 0,
+									 %(correct_answer)s, %(option_a)s, %(option_b)s, %(option_c)s, %(option_d)s,
+									 %(explanation)s, %(parent)s, 'Course Lesson', 'quiz_questions', %(idx)s,
+									 %(creation)s, %(modified)s, %(modified_by)s, %(owner)s, 0)
+								""",
 									{
 										"name": quiz_question_name,
 										"question_link": lms_question_name,  # Link to the LMS Question
@@ -1914,12 +1914,11 @@ def get_published_courses(limit=10, page=1):
 		frappe.log_error(frappe.get_traceback(), "Get Published Courses Failed")
 		return {"error": str(e), "success": False}
 
-
 @frappe.whitelist()
 def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
 	"""
-	Get all courses where the tutor is an instructor and at least one student is enrolled.
-	Optionally filter by course_name and status using Frappe API.
+	Get all students enrolled in courses where the tutor is an instructor.
+	Returns flattened student data with course information.
 	"""
 	try:
 		# Step 1: Get all course names where tutor is instructor using Frappe API
@@ -1939,103 +1938,97 @@ def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
 			course_filters["status"] = status
 
 		# Get filtered courses
-		filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name"])
+		filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name", "title", "course_price", "currency"])
 
 		if not filtered_courses:
 			return {"success": True, "data": [], "count": 0}
 
-		final_course_names = [c["name"] for c in filtered_courses]
+		students_data = []
+		student_counter = 1
 
-		courses = []
-		for cname in final_course_names:
+		for course in filtered_courses:
 			try:
 				# Get enrolled students for this course using Frappe API
-				students = frappe.get_all(
-					"LMS Enrollment", filters={"course": cname, "member_type": "Student"}, fields=["member"]
+				enrollments = frappe.get_all(
+					"LMS Enrollment",
+					filters={"course": course["name"]},
+					fields=["member", "creation", "member_name", "progress"]
 				)
 
-				if students:
-					# Enrich student data
-					enriched_students = []
-					for s in students:
+				if enrollments:
+					for enrollment in enrollments:
 						try:
+							# Get user profile data
 							user_profile = frappe.get_value(
-								"User Profile", {"user": s["member"]}, "*", as_dict=True
+								"User Profile", {"user": enrollment["member"]}, "*", as_dict=True
 							)
-							if user_profile:
-								enriched_students.append(user_profile)
-							else:
-								# Fallback to basic user info
-								user_info = frappe.get_value(
-									"User", s["member"], ["name", "full_name", "email"], as_dict=True
-								)
-								if user_info:
-									enriched_students.append(user_info)
+
+							# Get basic user data as fallback
+							user_info = frappe.get_value(
+								"User", enrollment["member"], ["name", "full_name", "email", "user_image"], as_dict=True
+							)
+
+							if user_profile or user_info:
+								# Determine student name (prefer full_name from User, fallback to User Profile)
+								student_name = ""
+								if user_info and user_info.get("full_name"):
+									student_name = user_info["full_name"]
+								elif user_profile and user_profile.get("user"):
+									# Try to get full_name from the linked user
+									linked_user = frappe.get_value("User", user_profile["user"], "full_name")
+									student_name = linked_user or user_profile.get("user", "")
+								else:
+									student_name = enrollment["member"]
+
+								# Get education level from User Profile
+								education_level = user_profile.get("education_level", "Not Specified") if user_profile else "Not Specified"
+
+								# Create student record in desired format
+								student_record = {
+									"id": user_info.get("email", "") if user_info else "",
+									"name": student_name,
+									"avatar": user_info.get("user_image"),
+									"educationLevel": (
+										{
+											"id": user_profile.get("education_level"),
+											"name": frappe.db.get_value(
+												"LMS Course Level",
+												user_profile.get("education_level"),
+												"education_level"
+											)
+										}
+									),
+									"enrolledCourse": course.get("title", ""),
+									"progress": enrollment.get("progress", 0),
+									"dateEnrolled": enrollment.get("creation"),
+									"courseFee": course.get("course_price"),
+									"currency": course.get("currency"),
+									"email": user_info.get("email", "") if user_info else "",
+									"course_id": course["name"],
+									"student_id": enrollment["member"]
+								}
+
+								students_data.append(student_record)
+								student_counter += 1
+
 						except Exception as e:
 							frappe.log_error(
-								f"Failed to get user profile for {s['member']}: {str(e)}",
+								f"Failed to process student {enrollment['member']}: {str(e)}",
 								"get_tutor_courses_with_enrollments",
 							)
-							enriched_students.append(s)
-
-					# Get course info using serialize_course
-					try:
-						course_info = serialize_course(cname)
-						course_info["enrolled_students"] = enriched_students
-						courses.append(course_info)
-					except Exception as e:
-						frappe.log_error(
-							f"Failed to serialize course {cname}: {str(e)}",
-							"get_tutor_courses_with_enrollments",
-						)
-						continue
+							continue
 
 			except Exception as e:
 				frappe.log_error(
-					f"Failed to process course {cname}: {str(e)}", "get_tutor_courses_with_enrollments"
+					f"Failed to process course {course['name']}: {str(e)}", "get_tutor_courses_with_enrollments"
 				)
 				continue
 
-		return {"success": True, "data": courses, "count": len(courses)}
+		return {"success": True, "data": students_data, "count": len(students_data)}
 
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Get Tutor Courses With Enrollments Failed")
 		return {"error": str(e), "success": False}
-	# """
-    # Get all courses where the tutor is an instructor and at least one student is enrolled.
-    # Optionally filter by course_name and status.
-    # """
-	# # Step 1: Get all course names where tutor is instructor
-	# course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
-
-	# # Step 2: Filter by course_name and status if provided
-	# course_filters = {}
-	# if course_name:
-	# 	course_filters["name"] = course_name
-	# if status:
-	# 	course_filters["status"] = status
-
-	# if course_filters:
-	# 	filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name"])
-	# 	filtered_course_names = set(c["name"] for c in filtered_courses)
-	# 	course_names = [name for name in course_names if name in filtered_course_names]
-
-	# courses = []
-	# for cname in course_names:
-	# 	# Get enrolled students for this course
-	# 	students = frappe.get_all(
-	# 		"LMS Enrollment", filters={"course": cname, "member_type": "Student"}, fields=["member"]
-	# 	)
-	# 	if students:
-	# 		enriched_students = []
-	# 		for s in students:
-	# 			user_profile = frappe.get_value("User Profile", {"user": s["member"]}, "*", as_dict=True)
-	# 			enriched_students.append(user_profile if user_profile else s)
-	# 		course_info = serialize_course(cname)
-	# 		course_info["enrolled_students"] = enriched_students
-	# 		courses.append(course_info)
-
-	# return {"success": True, "data": courses, "count": len(courses)}
 
 @frappe.whitelist(allow_guest=True)
 def get_course_detail(course_name):
