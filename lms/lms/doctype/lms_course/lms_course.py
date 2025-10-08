@@ -1021,6 +1021,7 @@ def update_course():
 									# Create new quiz question
 									lms_question_doc = frappe.new_doc("LMS Question")
 									lms_question_doc.question = question_data.get("question", "")
+									options = question_data.get("options", [])
 									lms_question_doc.type = "Choices"
 									lms_question_doc.multiple = 0
 
