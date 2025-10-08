@@ -8,7 +8,8 @@
   "rating",
   "course",
   "column_break_lrtk",
-  "review"
+  "review",
+  "anonymous"
  ],
  "fields": [
   {
@@ -36,11 +37,17 @@
   {
    "fieldname": "column_break_lrtk",
    "fieldtype": "Column Break"
+  },
+  {
+   "default": "0",
+   "fieldname": "anonymous",
+   "fieldtype": "Check",
+   "label": "Anonymous"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-09-25 09:15:38.618814",
+ "modified": "2025-10-08 11:43:15.451464",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course Review",

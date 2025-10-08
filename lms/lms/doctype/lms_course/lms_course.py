@@ -310,7 +310,7 @@ def serialize_course(course_name):
 
 	# Reviews
 	reviews = frappe.get_all(
-		"LMS Course Review", {"course": course.name}, ["name", "rating", "review", "owner", "creation"]
+		"LMS Course Review", {"course": course.name}, ["name", "rating", "review", "owner", "creation", "anonymous"]
 	)
 	reviews_list = []
 	reviewer_name = frappe.get_all(
@@ -327,6 +327,7 @@ def serialize_course(course_name):
 				"rating": r.rating,
 				"comment": r.review,
 				"date": r.creation,
+				"anonymous":r.anonymous
 			}
 		)
 
@@ -2205,7 +2206,7 @@ def serialize_course_new(course_name):
 			reviews = frappe.get_all(
 				"LMS Course Review",
 				filters={"course": course.name},
-				fields=["name", "rating", "review", "owner", "creation"]
+				fields=["name", "rating", "review", "owner","anonymous","creation"]
 			)
 
 			for r in reviews:
@@ -2229,6 +2230,7 @@ def serialize_course_new(course_name):
 						"reviewer_image": reviewer_image,
 						"rating": r.get("rating", 0),
 						"comment": r.get("review", ""),
+						"anonymous":r.get("anonymous",0),
 						"date": r.get("creation", ""),
 					})
 				except Exception as e:
