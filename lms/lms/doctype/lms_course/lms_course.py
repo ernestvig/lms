@@ -1033,6 +1033,11 @@ def update_course():
 									lms_question_doc.question = question_data.get("question", "")
 									lms_question_doc.type = "Choices"
 									lms_question_doc.multiple = 0
+									# Handle both 'options' and 'answers' formats
+									options = question_data.get("options") or question_data.get("answers", [])
+									
+									# Handle correctAnswer as letter (A, B, C, D) or index (0, 1, 2, 3)
+									correct_answer = question_data.get("correctAnswer", 0)
 
 									if len(options) > 0:
 										lms_question_doc.option_1 = options[0]
