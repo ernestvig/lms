@@ -112,7 +112,7 @@
    "link_fieldname": "chapter"
   }
  ],
- "modified": "2025-05-29 12:38:26.266673",
+ "modified": "2025-10-08 09:44:04.811265",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "Course Chapter",
@@ -162,6 +162,19 @@
    "read": 1,
    "report": 1,
    "role": "Moderator",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Teacher",
+   "select": 1,
    "share": 1,
    "write": 1
   }

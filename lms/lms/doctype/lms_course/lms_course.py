@@ -579,7 +579,7 @@ def create_course():
 		course_doc.enable_certification = 1 if data.get("issueCertificate", False) else 0
 
 		# Add instructor
-		course_doc.append("instructors", {"instructor": data.get("instructor", frappe.session.user)})
+		course_doc.append("instructors", {"instructor": frappe.session.user}) # or data.get("instructor", frappe.session.user)
 
 		# Insert course first to get the name
 		course_doc.insert(ignore_permissions=True)
@@ -748,7 +748,7 @@ def create_course():
 		frappe.log_error(frappe.get_traceback(), "Course Creation Failed")
 		return {"error": str(e), "traceback": frappe.get_traceback()}
 
-@frappe.whitelist()
+@frappe.whitelist(allow_guest=False, methods=["POST", "PUT", "PATCH"])
 def update_course():
 	"""
 	Update an existing course with chapters, lessons, and settings.
@@ -770,8 +770,10 @@ def update_course():
 		if not frappe.db.exists("LMS Course", course_name):
 			return {"error": f"Course {course_name} not found"}
 
-		# Get existing course
+		# Get existing course with ignore_permissions
 		course_doc = frappe.get_doc("LMS Course", course_name)
+		# Set ignore_permissions flag
+		course_doc.flags.ignore_permissions = True
 
 		# === Update course fields ===
 		course_doc.title = data.get("title", course_doc.title)
@@ -806,13 +808,14 @@ def update_course():
 
 		# === Track existing and new data ===
 		existing_chapters = {
-			ch.chapter: ch for ch in frappe.get_all(
+			ch.name: ch for ch in frappe.get_all(
 				"Course Chapter",
 				filters={"course": course_name},
-				fields=["name", "title"]
+				fields=["name", "title"],
+				ignore_permissions=True
 			)
 		}
-
+		
 		chapters_to_keep = set()
 		chapters_data = []
 		lessons_created = []
@@ -825,12 +828,13 @@ def update_course():
 			for chapter_idx, module_data in enumerate(data["modules"]):
 				chapter_name = module_data.get("chapter_name")  # Optional: to update existing
 				chapter_title = module_data.get("title", "")
-
+				
 				# Determine if updating or creating
 				chapter_doc = None
 				if chapter_name and frappe.db.exists("Course Chapter", chapter_name):
 					# Update existing chapter
 					chapter_doc = frappe.get_doc("Course Chapter", chapter_name)
+					chapter_doc.flags.ignore_permissions = True
 					chapter_doc.title = chapter_title
 					chapter_doc.save(ignore_permissions=True)
 					chapters_to_keep.add(chapter_name)
@@ -853,10 +857,11 @@ def update_course():
 					lesson.name: lesson for lesson in frappe.get_all(
 						"Course Lesson",
 						filters={"chapter": chapter_doc.name},
-						fields=["name", "title", "content_type"]
+						fields=["name", "title", "content_type"],
+						ignore_permissions=True
 					)
 				}
-
+				
 				lessons_to_keep = set()
 
 				# Process content blocks (lessons)
@@ -873,6 +878,7 @@ def update_course():
 						if lesson_name and frappe.db.exists("Course Lesson", lesson_name):
 							# Update existing lesson
 							lesson_doc = frappe.get_doc("Course Lesson", lesson_name)
+							lesson_doc.flags.ignore_permissions = True
 							lesson_doc.title = lesson_title
 							lesson_doc.content_type = content_type
 							lesson_doc.content_order = block_idx + 1
@@ -890,7 +896,7 @@ def update_course():
 
 						# Update content based on type
 						content_type_lower = content_type.lower()
-
+						
 						if content_type_lower == "essay":
 							lesson_doc.essay_title = lesson_title
 							lesson_doc.essay_content = content_data.get("content", "")
@@ -929,21 +935,24 @@ def update_course():
 									"parent": lesson_doc.name,
 									"parenttype": "Course Lesson"
 								},
-								fields=["name", "question"]
+								fields=["name", "question"],
+								ignore_permissions=True
 							)
-
+							
 							existing_quiz_q_dict = {q.name: q for q in existing_quiz_questions}
 							quiz_questions_to_keep = set()
 
 							for q_idx, question_data in enumerate(content_data["questions"]):
 								quiz_question_name = question_data.get("quiz_question_name")
-
+								
 								# Check if updating or creating
 								if quiz_question_name and frappe.db.exists("LMS Quiz Question", quiz_question_name):
 									# Update existing quiz question and its LMS Question
 									quiz_question_doc = frappe.get_doc("LMS Quiz Question", quiz_question_name)
+									quiz_question_doc.flags.ignore_permissions = True
 									lms_question_doc = frappe.get_doc("LMS Question", quiz_question_doc.question)
-
+									lms_question_doc.flags.ignore_permissions = True
+									
 									# Update LMS Question
 									lms_question_doc.question = question_data.get("question", "")
 									options = question_data.get("options", [])
@@ -977,7 +986,7 @@ def update_course():
 									quiz_question_doc.explanation = question_data.get("explanation", "")
 									quiz_question_doc.idx = q_idx + 1
 									quiz_question_doc.save(ignore_permissions=True)
-
+									
 									quiz_questions_to_keep.add(quiz_question_name)
 									quiz_questions_updated.append({
 										"lms_question_name": lms_question_doc.name,
@@ -1043,6 +1052,7 @@ def update_course():
 							for existing_q_name in existing_quiz_q_dict:
 								if existing_q_name not in quiz_questions_to_keep:
 									quiz_q_doc = frappe.get_doc("LMS Quiz Question", existing_q_name)
+									quiz_q_doc.flags.ignore_permissions = True
 									lms_q_name = quiz_q_doc.question
 									frappe.delete_doc("LMS Quiz Question", existing_q_name, ignore_permissions=True)
 									if frappe.db.exists("LMS Question", lms_q_name):
@@ -1060,18 +1070,20 @@ def update_course():
 						quiz_questions = frappe.get_all(
 							"LMS Quiz Question",
 							filters={"parent": existing_lesson_name, "parenttype": "Course Lesson"},
-							fields=["name", "question"]
+							fields=["name", "question"],
+							ignore_permissions=True
 						)
 						for qq in quiz_questions:
 							frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
 							if frappe.db.exists("LMS Question", qq.question):
 								frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
-
+						
 						# Delete the lesson
 						frappe.delete_doc("Course Lesson", existing_lesson_name, ignore_permissions=True)
 
 				# Update chapter's lesson child table
 				chapter_doc = frappe.get_doc("Course Chapter", chapter_doc.name)
+				chapter_doc.flags.ignore_permissions = True
 				chapter_doc.lessons = []
 				for lesson_info in chapter_info["lessons"]:
 					chapter_doc.append("lessons", {"lesson": lesson_info["name"]})
@@ -1086,27 +1098,30 @@ def update_course():
 				lessons = frappe.get_all(
 					"Course Lesson",
 					filters={"chapter": existing_chapter_name},
-					fields=["name"]
+					fields=["name"],
+					ignore_permissions=True
 				)
 				for lesson in lessons:
 					# Delete quiz questions first
 					quiz_questions = frappe.get_all(
 						"LMS Quiz Question",
 						filters={"parent": lesson.name, "parenttype": "Course Lesson"},
-						fields=["name", "question"]
+						fields=["name", "question"],
+						ignore_permissions=True
 					)
 					for qq in quiz_questions:
 						frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
 						if frappe.db.exists("LMS Question", qq.question):
 							frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
-
+					
 					frappe.delete_doc("Course Lesson", lesson.name, ignore_permissions=True)
-
+				
 				# Delete the chapter
 				frappe.delete_doc("Course Chapter", existing_chapter_name, ignore_permissions=True)
 
 		# Update course's chapter child table
 		course_update = frappe.get_doc("LMS Course", course_name)
+		course_update.flags.ignore_permissions = True
 		course_update.chapters = []
 		for chapter_info in chapters_data:
 			course_update.append("chapters", {"chapter": chapter_info["name"]})
