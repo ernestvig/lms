@@ -1172,7 +1172,7 @@ def update_course():
 
 	except Exception as e:
 		frappe.db.rollback()
-		frappe.log_error(frappe.get_traceback(), "Course Update Failed")
+		frappe.log_error(frappe.get_traceback(), "Course Update Failed. Please try again.")
 		return {"error": str(e), "traceback": frappe.get_traceback()}
 
 @frappe.whitelist()
