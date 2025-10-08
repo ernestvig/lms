@@ -976,9 +976,20 @@ def update_course():
 									lms_question_doc = frappe.get_doc("LMS Question", quiz_question_doc.question)
 									lms_question_doc.flags.ignore_permissions = True
 									
+									# Handle both 'options' and 'answers' formats
+									options = question_data.get("options") or question_data.get("answers", [])
+									
+									# Handle correctAnswer as letter (A, B, C, D) or index (0, 1, 2, 3)
+									correct_answer = question_data.get("correctAnswer", 0)
+									if isinstance(correct_answer, str):
+										# Convert letter to index: A->0, B->1, C->2, D->3
+										letter_to_index = {"A": 0, "B": 1, "C": 2, "D": 3}
+										correct_answer_index = letter_to_index.get(correct_answer.upper(), 0)
+									else:
+										correct_answer_index = int(correct_answer)
+									
 									# Update LMS Question
 									lms_question_doc.question = question_data.get("question", "")
-									options = question_data.get("options", [])
 									if len(options) > 0:
 										lms_question_doc.option_1 = options[0]
 									if len(options) > 1:
@@ -988,7 +999,6 @@ def update_course():
 									if len(options) > 3:
 										lms_question_doc.option_4 = options[3]
 
-									correct_answer_index = question_data.get("correctAnswer", 0)
 									lms_question_doc.is_correct_1 = 1 if correct_answer_index == 0 else 0
 									lms_question_doc.is_correct_2 = 1 if correct_answer_index == 1 else 0
 									lms_question_doc.is_correct_3 = 1 if correct_answer_index == 2 else 0
@@ -996,8 +1006,8 @@ def update_course():
 									lms_question_doc.save(ignore_permissions=True)
 
 									# Update Quiz Question
-									quiz_question_doc.marks = int(question_data.get("mark", 1))
-									quiz_question_doc.points = int(question_data.get("mark", 1))
+									quiz_question_doc.marks = int(question_data.get("mark") or question_data.get("marks", 1))
+									quiz_question_doc.points = int(question_data.get("mark") or question_data.get("marks", 1))
 									correct_answer_letter = (
 										["A", "B", "C", "D"][correct_answer_index] if correct_answer_index < 4 else "A"
 									)
@@ -1021,8 +1031,6 @@ def update_course():
 									# Create new quiz question
 									lms_question_doc = frappe.new_doc("LMS Question")
 									lms_question_doc.question = question_data.get("question", "")
-									options = question_data.get("options", [])
-									correct_answer_index = question_data.get("correctAnswer", 0)
 									lms_question_doc.type = "Choices"
 									lms_question_doc.multiple = 0
 
@@ -1174,7 +1182,7 @@ def update_course():
 
 	except Exception as e:
 		frappe.db.rollback()
-		frappe.log_error(frappe.get_traceback(), "Course Update Failed. Please try again.")
+		frappe.log_error(frappe.get_traceback(), "Course Update Failed")
 		return {"error": str(e), "traceback": frappe.get_traceback()}
 
 @frappe.whitelist()
