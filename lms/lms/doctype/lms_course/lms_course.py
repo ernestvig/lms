@@ -1038,6 +1038,15 @@ def update_course():
 									
 									# Handle correctAnswer as letter (A, B, C, D) or index (0, 1, 2, 3)
 									correct_answer = question_data.get("correctAnswer", 0)
+									
+									if isinstance(correct_answer, str):
+										# Convert letter to index: A->0, B->1, C->2, D->3
+										letter_to_index = {"A": 0, "B": 1, "C": 2, "D": 3}
+										correct_answer_index = letter_to_index.get(correct_answer.upper(), 0)
+									else:
+										correct_answer_index = int(correct_answer)
+										if correct_answer_index >= len(options):
+											correct_answer_index = 0
 
 									if len(options) > 0:
 										lms_question_doc.option_1 = options[0]
