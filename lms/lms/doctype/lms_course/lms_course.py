@@ -1022,6 +1022,7 @@ def update_course():
 									lms_question_doc = frappe.new_doc("LMS Question")
 									lms_question_doc.question = question_data.get("question", "")
 									options = question_data.get("options", [])
+									correct_answer_index = question_data.get("correctAnswer", 0)
 									lms_question_doc.type = "Choices"
 									lms_question_doc.multiple = 0
 
