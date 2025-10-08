@@ -776,7 +776,13 @@ def update_course():
 		course_doc.flags.ignore_permissions = True
 
 		# === Update course fields ===
-		course_doc.title = data.get("title", course_doc.title)
+		if "title" in data:
+			new_title = data.get("title", "").strip()
+			if new_title:
+				course_doc.title = new_title
+			elif not course_doc.title:
+				return {"error": "Course title cannot be empty"}
+		
 		course_doc.description = data.get("courseDescription", course_doc.description)
 		course_doc.short_introduction = data.get("courseDescription", course_doc.short_introduction)[:500]
 		course_doc.image = data.get("thumbnailImage", course_doc.image)
@@ -827,7 +833,14 @@ def update_course():
 		if "modules" in data:
 			for chapter_idx, module_data in enumerate(data["modules"]):
 				chapter_name = module_data.get("chapter_name")  # Optional: to update existing
-				chapter_title = module_data.get("title", "")
+				chapter_title = module_data.get("title", "").strip()
+				
+				# Validate chapter title
+				if not chapter_title:
+					return {
+						"error": f"Title is required for chapter at position {chapter_idx + 1}",
+						"chapter_index": chapter_idx
+					}
 				
 				# Determine if updating or creating
 				chapter_doc = None
@@ -870,7 +883,17 @@ def update_course():
 						lesson_name = content_block.get("lesson_name")  # Optional: to update existing
 						content_type = content_block.get("type", "Lesson").title()
 						content_data = content_block.get("data", {})
-						lesson_title = content_block.get("title", "")
+						
+						# Get title from data object or top level
+						lesson_title = content_data.get("title", content_block.get("title", "")).strip()
+						
+						# Validate title
+						if not lesson_title:
+							return {
+								"error": f"Title is required for content block at position {block_idx + 1} in chapter '{chapter_title}'",
+								"chapter": chapter_title,
+								"block_index": block_idx
+							}
 
 						lesson_doc = None
 						is_new_lesson = False
@@ -1001,7 +1024,6 @@ def update_course():
 									lms_question_doc.type = "Choices"
 									lms_question_doc.multiple = 0
 
-									options = question_data.get("options", [])
 									if len(options) > 0:
 										lms_question_doc.option_1 = options[0]
 									if len(options) > 1:
@@ -1011,7 +1033,6 @@ def update_course():
 									if len(options) > 3:
 										lms_question_doc.option_4 = options[3]
 
-									correct_answer_index = question_data.get("correctAnswer", 0)
 									lms_question_doc.is_correct_1 = 1 if correct_answer_index == 0 else 0
 									lms_question_doc.is_correct_2 = 1 if correct_answer_index == 1 else 0
 									lms_question_doc.is_correct_3 = 1 if correct_answer_index == 2 else 0
@@ -1020,9 +1041,9 @@ def update_course():
 
 									quiz_question_doc = frappe.new_doc("LMS Quiz Question")
 									quiz_question_doc.question = lms_question_doc.name
-									quiz_question_doc.marks = int(question_data.get("mark", 1))
+									quiz_question_doc.marks = int(question_data.get("mark") or question_data.get("marks", 1))
 									quiz_question_doc.question_type = "Multiple Choice"
-									quiz_question_doc.points = int(question_data.get("mark", 1))
+									quiz_question_doc.points = int(question_data.get("mark") or question_data.get("marks", 1))
 									quiz_question_doc.is_required = 0
 
 									correct_answer_letter = (
