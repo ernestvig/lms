@@ -1109,8 +1109,20 @@ def update_course():
 						})
 
 				# Delete removed lessons from this chapter
+				# Delete removed lessons from this chapter
 				for existing_lesson_name in existing_lessons:
 					if existing_lesson_name not in lessons_to_keep:
+						# ✅ FIRST: Remove the lesson from the chapter's child table
+						chapter_doc_for_cleanup = frappe.get_doc("Course Chapter", chapter_doc.name)
+						chapter_doc_for_cleanup.flags.ignore_permissions = True
+						
+						# Filter out the lesson from the child table
+						chapter_doc_for_cleanup.lessons = [
+							lesson for lesson in chapter_doc_for_cleanup.lessons 
+							if lesson.lesson != existing_lesson_name
+						]
+						chapter_doc_for_cleanup.save(ignore_permissions=True)
+						
 						# Delete quiz questions first if it's a quiz lesson
 						quiz_questions = frappe.get_all(
 							"LMS Quiz Question",
@@ -1123,8 +1135,8 @@ def update_course():
 							if frappe.db.exists("LMS Question", qq.question):
 								frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
 						
-						# Delete the lesson
-						frappe.delete_doc("Course Lesson", existing_lesson_name, ignore_permissions=True)
+						# ✅ NOW: Delete the lesson (after removing from child table)
+						frappe.delete_doc("Course Lesson", existing_lesson_name, ignore_permissions=True, force=True)
 
 				# Update chapter's lesson child table
 				chapter_doc = frappe.get_doc("Course Chapter", chapter_doc.name)
@@ -1137,8 +1149,18 @@ def update_course():
 				chapters_data.append(chapter_info)
 
 		# Delete removed chapters
+		# Delete removed chapters
 		for existing_chapter_name in existing_chapters:
 			if existing_chapter_name not in chapters_to_keep:
+				# ✅ FIRST: Remove the chapter from the course's child table
+				course_for_cleanup = frappe.get_doc("LMS Course", course_name)
+				course_for_cleanup.flags.ignore_permissions = True
+				course_for_cleanup.chapters = [
+					ch for ch in course_for_cleanup.chapters 
+					if ch.chapter != existing_chapter_name
+				]
+				course_for_cleanup.save(ignore_permissions=True)
+				
 				# Delete all lessons in this chapter
 				lessons = frappe.get_all(
 					"Course Lesson",
@@ -1146,6 +1168,13 @@ def update_course():
 					fields=["name"],
 					ignore_permissions=True
 				)
+				
+				# Get the chapter doc to remove lessons from its child table
+				chapter_to_delete = frappe.get_doc("Course Chapter", existing_chapter_name)
+				chapter_to_delete.flags.ignore_permissions = True
+				chapter_to_delete.lessons = []  # Clear all lessons from child table
+				chapter_to_delete.save(ignore_permissions=True)
+				
 				for lesson in lessons:
 					# Delete quiz questions first
 					quiz_questions = frappe.get_all(
@@ -1159,10 +1188,10 @@ def update_course():
 						if frappe.db.exists("LMS Question", qq.question):
 							frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
 					
-					frappe.delete_doc("Course Lesson", lesson.name, ignore_permissions=True)
+					frappe.delete_doc("Course Lesson", lesson.name, ignore_permissions=True, force=True)
 				
-				# Delete the chapter
-				frappe.delete_doc("Course Chapter", existing_chapter_name, ignore_permissions=True)
+				# ✅ NOW: Delete the chapter (after removing all lessons and from parent)
+				frappe.delete_doc("Course Chapter", existing_chapter_name, ignore_permissions=True, force=True)
 
 		# Update course's chapter child table
 		course_update = frappe.get_doc("LMS Course", course_name)
