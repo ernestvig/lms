@@ -586,7 +586,9 @@ def create_course():
 		if data.get("subjects"):
 			for idx, subject in enumerate(data["subjects"]):
 				subjects.append(data.get("subjects")[idx])
-			course_doc.append("subject", {"subject": ",".join(subjects)})
+			course_doc.append("subject", {
+				"subject": ",".join(subjects)
+				})
 
 		# Add instructor
 		course_doc.append("instructors", {"instructor": frappe.session.user}) # or data.get("instructor", frappe.session.user)
@@ -2262,14 +2264,25 @@ def serialize_course_new(course_name):
 
 		# Subject - with safe field access
 		subject = None
+		subjects = []
 		try:
 			if getattr(course, "subject", None):
-				if frappe.db.exists("Subject", course.subject):
-					subject_doc = frappe.get_doc("Subject", course.subject)
-					subject = {
-						"name": subject_doc.name,
-						"subject_name": getattr(subject_doc, "subject_name", ""),
-					}
+				if frappe.db.exists("Course Subject", {"parent": course_name}):
+					all_subjects = frappe.get_all(
+						"Course Subject",
+						filters={"parent": course_name},
+						fields=["subject"]
+					)
+					
+					for s in all_subjects:
+						subject_doc = frappe.get_doc("Subject", s.subject)
+						subject = {
+							"name": s.subject,
+							"subject_name": getattr(subject_doc, "subject_name", ""),
+						}
+						subjects.append(subject)
+					# course.subject = frappe.db.exists("Course Subject", {"course": course_name}) #subjects
+		
 		except Exception as e:
 			frappe.log_error(f"Failed to fetch subject: {str(e)}", "serialize_course")
 
@@ -2448,12 +2461,14 @@ def serialize_course_new(course_name):
 			"objectives": getattr(course, "objectives", ""),
 			"course_language": getattr(course, "course_language", ""),
 			"education_level": education_level,
-			"subject": subject,
+			"subject": subjects,
 			"paid_course": getattr(course, "paid_course", 0),
 			"price": getattr(course, "course_price", 0),
 			"currency": getattr(course, "currency", ""),
 			"rating": getattr(course, "rating", 0),
 			"enrollments": getattr(course, "enrollments", 0),
+			"duration": getattr(course, "duration", 0),
+			"target_audience": getattr(course, "target_audience", ""),
 			"enable_certification": getattr(course, "enable_certification", 0),
 			"instructors": instructors,
 			"reviews": reviews_list,
