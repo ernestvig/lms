@@ -2326,7 +2326,7 @@ def serialize_course_new(course_name):
 			lessons_list = []
 			for lesson in lessons:
 				from lms.lms.utils import get_progress
-				is_complete = get_progress(lesson.course, lesson.name, frappe.session.user)
+				is_complete = get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user)
 
 				lesson_data = {
 					"id": lesson.get("name"),
