@@ -108,14 +108,36 @@ def update_current_membership(batch, course, member):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_student_enrollments(student=None, limit=None, start=0):
+def get_student_enrollments(student=None, limit=None, start=0, status=None):
+	"""
+	Get student enrollments with transformed response format
+
+	Args:
+		student: Student email (defaults to current user)
+		limit: Number of records to fetch
+		start: Starting index for pagination
+		status: Filter by course status ('ongoing', 'complete', 'cancelled')
+	"""
 	student = student or frappe.session.user
 	if not student:
-		return {"success": False, "message": "Student not found"}
+		return {
+			"success": False,
+			"message": "Student not found"
+		}
 
-	filters = {"member": student, "member_type": "Student"}
-	total_count = frappe.db.count("LMS Enrollment", filters)
+	# Build filters
+	filters = {
+		"member": student,
+		"member_type": "Student"
+	}
 
+	# Add status filter if provided
+	if status:
+		# Map status values if needed (the status is on the LMS Course doctype)
+		# We'll need to join with course to filter by status
+		pass  # We'll handle this in the query below
+
+	# Get enrollments
 	enrollments = frappe.get_all(
 		"LMS Enrollment",
 		filters=filters,
@@ -125,21 +147,93 @@ def get_student_enrollments(student=None, limit=None, start=0):
 		order_by="creation desc",
 	)
 
-	return {"success": True, "data": enrollments, "count": total_count}
+	# Transform the response
+	transformed_courses = []
 
+	for enrollment in enrollments:
+		# Get course details
+		course = frappe.get_doc("LMS Course", enrollment.course)
+
+		# Skip if status filter is applied and doesn't match
+		if status and course.status.lower() != status.lower():
+			continue
+
+		# Get chapter count (modules)
+		chapter_count = frappe.db.count(
+			"Chapter Reference",
+			{"parent": course.name}
+		)
+
+		# Get instructor name (first instructor)
+		instructor_name = "Unknown"
+		if course.instructors and len(course.instructors) > 0:
+			instructor = frappe.get_doc("User", course.instructors[0].instructor)
+			instructor_name = instructor.full_name or instructor.name
+
+		# Calculate duration from lessons
+		total_duration_minutes = 0
+		chapters = frappe.get_all(
+			"Chapter Reference",
+			filters={"parent": course.name},
+			fields=["chapter"]
+		)
+
+		for chapter in chapters:
+			lessons = frappe.get_all(
+				"Lesson Reference",
+				filters={"parent": chapter.chapter},
+				fields=["lesson"]
+			)
+			# You might want to add a duration field to lessons
+			# For now, assuming average 15 mins per lesson
+			total_duration_minutes += len(lessons) * 15
+
+		# Format duration
+		hours = total_duration_minutes // 60
+		minutes = total_duration_minutes % 60
+		duration = f"{hours} hours {minutes} mins" if hours > 0 else f"{minutes} mins"
+
+		# Build transformed course object
+		transformed_course = {
+			"id": course.name,
+			"slug": course.name,
+			"title": course.title,
+			"tutor": instructor_name,
+			"tutorId": course.instructors[0].instructor if course.instructors else None,
+			"thumbnail_image": course.image ,
+			"enrolled": course.enrollments or 0,
+			"modules": chapter_count,
+			"status": course.status,
+			"percentage_complete": enrollment.progress or 0,
+			"duration": duration
+		}
+
+		transformed_courses.append(transformed_course)
+
+	# Count after filtering
+	filtered_count = len(transformed_courses)
+
+	return {
+		"success": True,
+		"data": {
+			"courses": transformed_courses
+		},
+		"message": "Enrolled courses retrieved successfully"
+	}
 
 @frappe.whitelist()
 def get_tutor_enrollment_kpi(tutor):
-    # Get courses created by the tutor
-    courses = frappe.get_all(
-        "LMS Course",
+    # Get courses where the tutor is an instructor
+    # Check in the Course Instructor child table
+    course_instructors = frappe.get_all(
+        "Course Instructor",
         filters={"instructor": tutor},
-        fields=["name"],
+        fields=["parent"],
     )
-    course_count = len(courses)
 
-    # Extract course names
-    course_names_list = [c.name for c in courses]
+    # Extract unique course names
+    course_names_list = list(set([ci.parent for ci in course_instructors]))
+    course_count = len(course_names_list)
 
     if not course_names_list:
         return {
@@ -150,14 +244,39 @@ def get_tutor_enrollment_kpi(tutor):
         }
 
     # Get total student enrollments across tutor's courses
-    student_enrollment_count = frappe.db.count(
+    enrollments = frappe.get_all(
         "LMS Enrollment",
-        filters={"course": ["in", course_names_list], "member_type": "Student"},
+        filters={
+            "course": ["in", course_names_list],
+            "member_type": "Student"
+        },
+        fields=["progress"],
     )
+
+    student_enrollment_count = len(enrollments)
+
+    if student_enrollment_count == 0:
+        return {
+            "success": True,
+            "course_count": course_count,
+            "student_enrollment_count": 0,
+            "completion_rate": "0%",
+        }
+
+    # Calculate completion rate
+    completed_count = 0
+    for enrollment in enrollments:
+        progress = enrollment.progress or 0
+        # Consider completed if progress is 100%
+        if progress >= 100:
+            completed_count += 1
+
+    # Calculate completion rate percentage
+    completion_rate = round((completed_count / student_enrollment_count) * 100, 2)
 
     return {
         "success": True,
         "course_count": course_count,
         "student_enrollment_count": student_enrollment_count,
-        "completion_rate": "0%",
+        "completion_rate": f"{completion_rate}%",
     }
