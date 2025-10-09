@@ -61,7 +61,9 @@
   "course_language",
   "subject",
   "video",
-  "drafted"
+  "drafted",
+  "duration",
+  "target_audience"
  ],
  "fields": [
   {
@@ -302,9 +304,9 @@
   },
   {
    "fieldname": "subject",
-   "fieldtype": "Link",
+   "fieldtype": "Table MultiSelect",
    "label": "Subject",
-   "options": "Subject"
+   "options": "Course Subject"
   },
   {
    "default": "1",
@@ -332,6 +334,16 @@
    "fieldname": "drafted",
    "fieldtype": "Check",
    "label": "Drafted"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Data",
+   "label": "Duration"
+  },
+  {
+   "fieldname": "target_audience",
+   "fieldtype": "Data",
+   "label": "Target Audience"
   }
  ],
  "is_published_field": "published",
@@ -350,7 +362,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-10-03 12:48:36.274607",
+ "modified": "2025-10-09 20:30:58.664528",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",

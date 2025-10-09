@@ -578,6 +578,15 @@ def create_course():
 		course_doc.published = 1 if data.get("visibility") == "public" else 0
 		course_doc.draft = 0 if data.get("visibility") == "public" else 1
 		course_doc.enable_certification = 1 if data.get("issueCertificate", False) else 0
+		course_doc.duration = data.get("duration", "")
+		course_doc.target_audience = data.get("targetAudience", "")
+
+		# Add Subject
+		subjects = []
+		if data.get("subjects"):
+			for idx, subject in enumerate(data["subjects"]):
+				subjects.append(data.get("subjects")[idx])
+			course_doc.append("subject", {"subject": ",".join(subjects)})
 
 		# Add instructor
 		course_doc.append("instructors", {"instructor": frappe.session.user}) # or data.get("instructor", frappe.session.user)
@@ -735,6 +744,9 @@ def create_course():
 				"course_title": course_doc.title,
 				"pricing_model": data.get("pricingModel", "free"),
 				"price": data.get("price", 0),
+				"subjects": data.get("subjects", []),
+				"duration": data.get("duration", ""),
+				"target_audience": data.get("targetAudience", ""),
 				"chapters_count": len(chapters_created),
 				"lessons_count": len(lessons_created),
 				"quiz_questions_count": len(quiz_questions_created),
@@ -804,6 +816,15 @@ def update_course():
 		course_doc.published = 1 if data.get("visibility") == "public" else 0
 		course_doc.draft = 0 if data.get("visibility") == "public" else 1
 		course_doc.enable_certification = 1 if data.get("issueCertificate", False) else 0
+		course_doc.duration = data.get("duration", "")
+		course_doc.target_audience = data.get("targetAudience", "")
+
+		# Update Subjects
+		subjects = []
+		if data.get("subjects"):
+			for idx, subject in enumerate(data["subjects"]):
+				subjects.append(data.get("subjects")[idx])
+			course_doc.append("subject", {"subject": ",".join(subjects)})
 
 		# Update instructor
 		if data.get("instructor"):
