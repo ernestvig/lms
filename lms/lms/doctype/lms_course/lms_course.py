@@ -2325,7 +2325,7 @@ def serialize_course_new(course_name):
 
 			lessons_list = []
 			for lesson in lessons:
-				# is_complete = 
+				is_complete = get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user)
 
 				lesson_data = {
 					"id": lesson.get("name"),
@@ -2333,7 +2333,7 @@ def serialize_course_new(course_name):
 					"content_type": lesson.get("content_type", "Lesson"),
 					"content_order": lesson.get("content_order", 1),
 					"is_published": lesson.get("is_published", 1),
-					"is_complete": get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user),
+					"is_complete": is_complete or False,
 				}
 
 				# Handle Quiz questions
