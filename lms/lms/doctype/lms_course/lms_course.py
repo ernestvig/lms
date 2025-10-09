@@ -2325,12 +2325,16 @@ def serialize_course_new(course_name):
 
 			lessons_list = []
 			for lesson in lessons:
+				from lms.lms.utils import get_progress
+				is_complete = get_progress(lesson.course, lesson.name, frappe.session.user)
+
 				lesson_data = {
 					"id": lesson.get("name"),
 					"title": lesson.get("title", ""),
 					"content_type": lesson.get("content_type", "Lesson"),
 					"content_order": lesson.get("content_order", 1),
 					"is_published": lesson.get("is_published", 1),
+					"is_complete": is_complete,
 				}
 
 				# Handle Quiz questions
