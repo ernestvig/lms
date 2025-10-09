@@ -235,7 +235,7 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None)
 
 	# Step 1: Get all course names linked to instructor
 	course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
-
+	
 	if not course_names:
 		return {"success": True, "data": [], "count": 0}
 
@@ -251,7 +251,7 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None)
 	)
 
 	# Step 3: Serialize each course
-	serialized_courses = [serialize_course(c["name"]) for c in courses]
+	serialized_courses = [serialize_course_new(c["name"]) for c in courses]
 
 	# Step 4: Add instructor profile data
 	profile_data = {}
@@ -2281,7 +2281,10 @@ def serialize_course_new(course_name):
 
 		for chapter in chapters:
 			# Determine available lesson fields dynamically
-			lesson_fields = ["name", "title", "content_type", "content_order", "is_published"]
+			lesson_fields = [
+				"name", "title", "content_type", "content_order", "is_published",
+				"course"
+				]
 
 			try:
 				# Test if enhanced fields exist
@@ -2317,7 +2320,7 @@ def serialize_course_new(course_name):
 					lessons = frappe.get_all(
 						"Course Lesson",
 						filters={"chapter": chapter.name},
-						fields=["name", "title"],
+						fields=["*"], #"name", "title"
 						order_by="idx",
 					)
 				except:
@@ -2325,7 +2328,8 @@ def serialize_course_new(course_name):
 
 			lessons_list = []
 			for lesson in lessons:
-				is_complete = get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user)
+				progress = get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user)
+				is_complete = progress is not None
 
 				lesson_data = {
 					"id": lesson.get("name"),
