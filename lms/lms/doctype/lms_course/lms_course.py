@@ -12,7 +12,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, today
 from private_learn_api.utils.reponse import paginated_response
 
-from lms.lms.utils import get_chapters
+from lms.lms.utils import get_chapters, get_progress
 
 from ...utils import generate_slug, update_payment_record, validate_image
 
@@ -2325,8 +2325,7 @@ def serialize_course_new(course_name):
 
 			lessons_list = []
 			for lesson in lessons:
-				from lms.lms.utils import get_progress
-				is_complete = get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user)
+				# is_complete = 
 
 				lesson_data = {
 					"id": lesson.get("name"),
@@ -2334,7 +2333,7 @@ def serialize_course_new(course_name):
 					"content_type": lesson.get("content_type", "Lesson"),
 					"content_order": lesson.get("content_order", 1),
 					"is_published": lesson.get("is_published", 1),
-					"is_complete": is_complete,
+					"is_complete": get_progress(lesson.get("course"), lesson.get("name"), frappe.session.user),
 				}
 
 				# Handle Quiz questions
