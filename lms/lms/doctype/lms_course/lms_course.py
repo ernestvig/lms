@@ -12,7 +12,7 @@ from frappe.model.document import Document
 from frappe.utils import cint, today
 from private_learn_api.utils.reponse import paginated_response
 
-from lms.lms.utils import get_chapters, get_progress
+from lms.lms.utils import get_chapters, get_progress, get_course_progress
 
 from ...utils import generate_slug, update_payment_record, validate_image
 
@@ -51,7 +51,7 @@ class LMSCourse(Document):
 
 	def validate_status(self):
 		if self.published:
-			self.status = "On going"
+			self.status = "Ongoing"
 
 	def validate_payments_app(self):
 		if self.paid_course:
@@ -476,11 +476,14 @@ def serialize_course(course_name):
 		)
 
 	# Final Structured Response
+	course_progress = get_course_progress(course.name, frappe.session.user)
+	course_status = "Complete" if course_progress == 100 else "Ongoing"
+
 	return {
 		"id": course.name,
 		"title": course.title,
 		"tags": course.tags,
-		"status": course.status,
+		"status": course_status,
 		"image": course.image,
 		"published": course.published,
 		"published_on": course.published_on,
@@ -2444,13 +2447,16 @@ def serialize_course_new(course_name):
 			})
 
 		# Final Structured Response with safe field access
+		course_progress = get_course_progress(course.name, frappe.session.user)
+		course_status = "Complete" if course_progress == 100 else "Ongoing"
+
 		return {
 			"doctype": "LMS Course",
 			"id": course.name,
 			"title": getattr(course, "title", ""),
 			# "tags": getattr(course, "tags", ""),
 			"tags": [tag.strip() for tag in getattr(course, "tags", "").split(",") if tag.strip()],
-			"status": getattr(course, "status", ""),
+			"status": course_status,
 			"image": getattr(course, "image", ""),
 			"published": getattr(course, "published", 0),
 			"published_on": getattr(course, "published_on", None),

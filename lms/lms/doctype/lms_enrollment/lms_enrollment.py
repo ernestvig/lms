@@ -194,6 +194,9 @@ def get_student_enrollments(student=None, limit=None, start=0, status=None):
 		duration = f"{hours} hours {minutes} mins" if hours > 0 else f"{minutes} mins"
 
 		# Build transformed course object
+		course_progress = get_course_progress(course.name, frappe.session.user)
+		course_status = "Complete" if course_progress == 100 else "Ongoing"
+
 		transformed_course = {
 			"id": course.name,
 			"slug": course.name,
@@ -203,7 +206,7 @@ def get_student_enrollments(student=None, limit=None, start=0, status=None):
 			"thumbnail_image": course.image ,
 			"enrolled": course.enrollments or 0,
 			"modules": chapter_count,
-			"status": course.status,
+			"status": course_status,
 			"percentage_complete": enrollment.progress or 0,
 			"duration": duration
 		}

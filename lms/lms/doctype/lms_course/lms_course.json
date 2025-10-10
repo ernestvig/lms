@@ -156,14 +156,14 @@
    "options": "Related Courses"
   },
   {
-   "default": "On going",
+   "default": "Ongoing",
    "fieldname": "status",
    "fieldtype": "Select",
    "hidden": 1,
    "in_list_view": 1,
    "in_standard_filter": 1,
    "label": "Status",
-   "options": "On going\nComplete\nCancelled",
+   "options": "Ongoing\nComplete\nCancelled",
    "read_only": 1
   },
   {
@@ -362,7 +362,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-10-09 20:30:58.664528",
+ "modified": "2025-10-10 11:15:21.920951",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",
