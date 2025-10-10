@@ -195,7 +195,7 @@ def get_student_enrollments(student=None, limit=None, start=0, status=None):
 
 		# Build transformed course object
 		course_progress = get_course_progress(course.name, frappe.session.user)
-		course_status = "Complete" if course_progress == 100 else "Ongoing"
+		course_status = "Complete" if course_progress == 100 else "On going"
 
 		transformed_course = {
 			"id": course.name,
