@@ -51,7 +51,7 @@ class LMSCourse(Document):
 
 	def validate_status(self):
 		if self.published:
-			self.status = "On going"
+			self.status = "Ongoing"
 
 	def validate_payments_app(self):
 		if self.paid_course:
@@ -477,7 +477,7 @@ def serialize_course(course_name):
 
 	# Final Structured Response
 	course_progress = get_course_progress(course.name, frappe.session.user)
-	course_status = "Complete" if course_progress == 100 else "On going"
+	course_status = "Complete" if course_progress == 100 else "Ongoing"
 
 	return {
 		"id": course.name,
@@ -2448,7 +2448,7 @@ def serialize_course_new(course_name):
 
 		# Final Structured Response with safe field access
 		course_progress = get_course_progress(course.name, frappe.session.user)
-		course_status = "Complete" if course_progress == 100 else "On going"
+		course_status = "Complete" if course_progress == 100 else "Ongoing"
 
 		return {
 			"doctype": "LMS Course",

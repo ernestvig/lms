@@ -6,6 +6,7 @@ import frappe
 from frappe import _
 from frappe.model.document import Document
 from frappe.utils import ceil
+from lms.lms.utils import get_course_progress
 
 
 class LMSEnrollment(Document):
@@ -195,7 +196,7 @@ def get_student_enrollments(student=None, limit=None, start=0, status=None):
 
 		# Build transformed course object
 		course_progress = get_course_progress(course.name, frappe.session.user)
-		course_status = "Complete" if course_progress == 100 else "On going"
+		course_status = "Complete" if course_progress == 100 else "Ongoing"
 
 		transformed_course = {
 			"id": course.name,
