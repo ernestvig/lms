@@ -25,9 +25,10 @@
  "fields": [
   {
    "fieldname": "question",
-   "fieldtype": "Data",
+   "fieldtype": "Link",
    "in_list_view": 1,
    "label": "Question",
+   "options": "LMS Quiz Question",
    "reqd": 1
   },
   {
@@ -110,7 +111,7 @@
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-13 09:03:26.082861",
+ "modified": "2025-10-13 16:53:58.714475",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Quiz Question",
