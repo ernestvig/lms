@@ -235,7 +235,7 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None)
 
 	# Step 1: Get all course names linked to instructor
 	course_names = frappe.get_all("Course Instructor", filters={"instructor": tutor}, pluck="parent")
-	
+
 	if not course_names:
 		return {"success": True, "data": [], "count": 0}
 
@@ -800,7 +800,7 @@ def update_course():
 				course_doc.title = new_title
 			elif not course_doc.title:
 				return {"error": "Course title cannot be empty"}
-		
+
 		course_doc.description = data.get("courseDescription", course_doc.description)
 		course_doc.short_introduction = data.get("courseDescription", course_doc.short_introduction)[:500]
 		course_doc.image = data.get("thumbnailImage", course_doc.image)
@@ -848,7 +848,7 @@ def update_course():
 				ignore_permissions=True
 			)
 		}
-		
+
 		chapters_to_keep = set()
 		chapters_data = []
 		lessons_created = []
@@ -861,14 +861,14 @@ def update_course():
 			for chapter_idx, module_data in enumerate(data["modules"]):
 				chapter_name = module_data.get("chapter_name")  # Optional: to update existing
 				chapter_title = module_data.get("title", "").strip()
-				
+
 				# Validate chapter title
 				if not chapter_title:
 					return {
 						"error": f"Title is required for chapter at position {chapter_idx + 1}",
 						"chapter_index": chapter_idx
 					}
-				
+
 				# Determine if updating or creating
 				chapter_doc = None
 				if chapter_name and frappe.db.exists("Course Chapter", chapter_name):
@@ -901,7 +901,7 @@ def update_course():
 						ignore_permissions=True
 					)
 				}
-				
+
 				lessons_to_keep = set()
 
 				# Process content blocks (lessons)
@@ -910,10 +910,10 @@ def update_course():
 						lesson_name = content_block.get("lesson_name")  # Optional: to update existing
 						content_type = content_block.get("type", "Lesson").title()
 						content_data = content_block.get("data", {})
-						
+
 						# Get title from data object or top level
 						lesson_title = content_data.get("title", content_block.get("title", "")).strip()
-						
+
 						# Validate title
 						if not lesson_title:
 							return {
@@ -946,7 +946,7 @@ def update_course():
 
 						# Update content based on type
 						content_type_lower = content_type.lower()
-						
+
 						if content_type_lower == "essay":
 							lesson_doc.essay_title = lesson_title
 							lesson_doc.essay_content = content_data.get("content", "")
@@ -988,13 +988,13 @@ def update_course():
 								fields=["name", "question"],
 								ignore_permissions=True
 							)
-							
+
 							existing_quiz_q_dict = {q.name: q for q in existing_quiz_questions}
 							quiz_questions_to_keep = set()
 
 							for q_idx, question_data in enumerate(content_data["questions"]):
 								quiz_question_name = question_data.get("quiz_question_name")
-								
+
 								# Check if updating or creating
 								if quiz_question_name and frappe.db.exists("LMS Quiz Question", quiz_question_name):
 									# Update existing quiz question and its LMS Question
@@ -1002,10 +1002,10 @@ def update_course():
 									quiz_question_doc.flags.ignore_permissions = True
 									lms_question_doc = frappe.get_doc("LMS Question", quiz_question_doc.question)
 									lms_question_doc.flags.ignore_permissions = True
-									
+
 									# Handle both 'options' and 'answers' formats
 									options = question_data.get("options") or question_data.get("answers", [])
-									
+
 									# Handle correctAnswer as letter (A, B, C, D) or index (0, 1, 2, 3)
 									correct_answer = question_data.get("correctAnswer", 0)
 									if isinstance(correct_answer, str):
@@ -1014,7 +1014,7 @@ def update_course():
 										correct_answer_index = letter_to_index.get(correct_answer.upper(), 0)
 									else:
 										correct_answer_index = int(correct_answer)
-									
+
 									# Update LMS Question
 									lms_question_doc.question = question_data.get("question", "")
 									if len(options) > 0:
@@ -1046,7 +1046,7 @@ def update_course():
 									quiz_question_doc.explanation = question_data.get("explanation", "")
 									quiz_question_doc.idx = q_idx + 1
 									quiz_question_doc.save(ignore_permissions=True)
-									
+
 									quiz_questions_to_keep.add(quiz_question_name)
 									quiz_questions_updated.append({
 										"lms_question_name": lms_question_doc.name,
@@ -1062,10 +1062,10 @@ def update_course():
 									lms_question_doc.multiple = 0
 									# Handle both 'options' and 'answers' formats
 									options = question_data.get("options") or question_data.get("answers", [])
-									
+
 									# Handle correctAnswer as letter (A, B, C, D) or index (0, 1, 2, 3)
 									correct_answer = question_data.get("correctAnswer", 0)
-									
+
 									if isinstance(correct_answer, str):
 										# Convert letter to index: A->0, B->1, C->2, D->3
 										letter_to_index = {"A": 0, "B": 1, "C": 2, "D": 3}
@@ -1142,14 +1142,14 @@ def update_course():
 						# ✅ FIRST: Remove the lesson from the chapter's child table
 						chapter_doc_for_cleanup = frappe.get_doc("Course Chapter", chapter_doc.name)
 						chapter_doc_for_cleanup.flags.ignore_permissions = True
-						
+
 						# Filter out the lesson from the child table
 						chapter_doc_for_cleanup.lessons = [
-							lesson for lesson in chapter_doc_for_cleanup.lessons 
+							lesson for lesson in chapter_doc_for_cleanup.lessons
 							if lesson.lesson != existing_lesson_name
 						]
 						chapter_doc_for_cleanup.save(ignore_permissions=True)
-						
+
 						# Delete quiz questions first if it's a quiz lesson
 						quiz_questions = frappe.get_all(
 							"LMS Quiz Question",
@@ -1161,7 +1161,7 @@ def update_course():
 							frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
 							if frappe.db.exists("LMS Question", qq.question):
 								frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
-						
+
 						# ✅ NOW: Delete the lesson (after removing from child table)
 						frappe.delete_doc("Course Lesson", existing_lesson_name, ignore_permissions=True, force=True)
 
@@ -1183,11 +1183,11 @@ def update_course():
 				course_for_cleanup = frappe.get_doc("LMS Course", course_name)
 				course_for_cleanup.flags.ignore_permissions = True
 				course_for_cleanup.chapters = [
-					ch for ch in course_for_cleanup.chapters 
+					ch for ch in course_for_cleanup.chapters
 					if ch.chapter != existing_chapter_name
 				]
 				course_for_cleanup.save(ignore_permissions=True)
-				
+
 				# Delete all lessons in this chapter
 				lessons = frappe.get_all(
 					"Course Lesson",
@@ -1195,13 +1195,13 @@ def update_course():
 					fields=["name"],
 					ignore_permissions=True
 				)
-				
+
 				# Get the chapter doc to remove lessons from its child table
 				chapter_to_delete = frappe.get_doc("Course Chapter", existing_chapter_name)
 				chapter_to_delete.flags.ignore_permissions = True
 				chapter_to_delete.lessons = []  # Clear all lessons from child table
 				chapter_to_delete.save(ignore_permissions=True)
-				
+
 				for lesson in lessons:
 					# Delete quiz questions first
 					quiz_questions = frappe.get_all(
@@ -1214,9 +1214,9 @@ def update_course():
 						frappe.delete_doc("LMS Quiz Question", qq.name, ignore_permissions=True)
 						if frappe.db.exists("LMS Question", qq.question):
 							frappe.delete_doc("LMS Question", qq.question, ignore_permissions=True)
-					
+
 					frappe.delete_doc("Course Lesson", lesson.name, ignore_permissions=True, force=True)
-				
+
 				# ✅ NOW: Delete the chapter (after removing all lessons and from parent)
 				frappe.delete_doc("Course Chapter", existing_chapter_name, ignore_permissions=True, force=True)
 
@@ -2032,119 +2032,133 @@ def get_published_courses(limit=10, page=1):
 
 @frappe.whitelist()
 def get_tutor_courses_with_enrollments(tutor, course_name=None, status=None):
-	"""
-	Get all students enrolled in courses where the tutor is an instructor.
-	Returns flattened student data with course information.
-	"""
-	try:
-		# Step 1: Get all course names where tutor is instructor using Frappe API
-		course_instructor_filters = {"instructor": tutor}
-		course_names = frappe.get_all(
-			"Course Instructor", filters=course_instructor_filters, fields=["parent"], pluck="parent"
-		)
+    """
+    Get all students enrolled in courses where the tutor is an instructor.
+    Returns flattened student data with course information.
+    """
+    try:
+        # Step 1: Get all course names where tutor is instructor
+        course_instructor_filters = {"instructor": tutor}
+        course_names = frappe.get_all(
+            "Course Instructor",
+            filters=course_instructor_filters,
+            fields=["parent"],
+            pluck="parent"
+        )
 
-		if not course_names:
-			return {"success": True, "data": [], "count": 0}
+        if not course_names:
+            return {"success": True, "data": [], "count": 0}
 
-		# Step 2: Filter by course_name and status if provided using Frappe API
-		course_filters = {"name": ["in", course_names]}
-		if course_name:
-			course_filters["name"] = course_name
-		if status:
-			course_filters["status"] = status
+        # Step 2: Build course filters (apply only if provided)
+        course_filters = {"name": ["in", course_names]}
+        if course_name:
+            course_filters["name"] = course_name
+        if status:
+            course_filters["status"] = status
 
-		# Get filtered courses
-		filtered_courses = frappe.get_all("LMS Course", filters=course_filters, fields=["name", "title", "course_price", "currency"])
+        # Get filtered courses
+        filtered_courses = frappe.get_all(
+            "LMS Course",
+            filters=course_filters,
+            fields=["name", "title", "course_price", "currency"]
+        )
 
-		if not filtered_courses:
-			return {"success": True, "data": [], "count": 0}
+        if not filtered_courses:
+            return {"success": True, "data": [], "count": 0}
 
-		students_data = []
-		student_counter = 1
+        students_data = []
 
-		for course in filtered_courses:
-			try:
-				# Get enrolled students for this course using Frappe API
-				enrollments = frappe.get_all(
-					"LMS Enrollment",
-					filters={"course": course["name"]},
-					fields=["member", "creation", "member_name", "progress"]
-				)
+        for course in filtered_courses:
+            try:
+                # Step 3: Get enrollments for this course (only Students)
+                enrollments = frappe.get_all(
+                    "LMS Enrollment",
+                    filters={"course": course["name"], "member_type": "Student"},
+                    fields=["member", "creation", "member_name", "progress"]
+                )
 
-				if enrollments:
-					for enrollment in enrollments:
-						try:
-							# Get user profile data
-							user_profile = frappe.get_value(
-								"User Profile", {"user": enrollment["member"]}, "*", as_dict=True
-							)
+                if not enrollments:
+                    continue
 
-							# Get basic user data as fallback
-							user_info = frappe.get_value(
-								"User", enrollment["member"], ["name", "full_name", "email", "user_image"], as_dict=True
-							)
+                for enrollment in enrollments:
+                    try:
+                        # Get user profile if exists
+                        user_profile = frappe.get_value(
+                            "User Profile", {"user": enrollment["member"]}, "*", as_dict=True
+                        )
 
-							if user_profile or user_info:
-								# Determine student name (prefer full_name from User, fallback to User Profile)
-								student_name = ""
-								if user_info and user_info.get("full_name"):
-									student_name = user_info["full_name"]
-								elif user_profile and user_profile.get("user"):
-									# Try to get full_name from the linked user
-									linked_user = frappe.get_value("User", user_profile["user"], "full_name")
-									student_name = linked_user or user_profile.get("user", "")
-								else:
-									student_name = enrollment["member"]
+                        # Get basic user info
+                        user_info = frappe.get_value(
+                            "User", enrollment["member"],
+                            ["name", "full_name", "email", "user_image"], as_dict=True
+                        )
 
-								# Get education level from User Profile
-								education_level = user_profile.get("education_level", "Not Specified") if user_profile else "Not Specified"
+                        if not (user_profile or user_info):
+                            continue
 
-								# Create student record in desired format
-								student_record = {
-									"id": user_info.get("email", "") if user_info else "",
-									"name": student_name,
-									"avatar": user_info.get("user_image"),
-									"educationLevel": (
-										{
-											"id": user_profile.get("education_level"),
-											"name": frappe.db.get_value(
-												"LMS Course Level",
-												user_profile.get("education_level"),
-												"education_level"
-											)
-										}
-									),
-									"enrolledCourse": course.get("title", ""),
-									"progress": enrollment.get("progress", 0),
-									"dateEnrolled": enrollment.get("creation"),
-									"courseFee": course.get("course_price"),
-									"currency": course.get("currency"),
-									"email": user_info.get("email", "") if user_info else "",
-									"course_id": course["name"],
-									"student_id": enrollment["member"]
-								}
+                        # Student display name
+                        student_name = ""
+                        if user_info and user_info.get("full_name"):
+                            student_name = user_info["full_name"]
+                        elif user_profile and user_profile.get("user"):
+                            linked_user = frappe.get_value(
+                                "User", user_profile["user"], "full_name"
+                            )
+                            student_name = linked_user or user_profile.get("user", "")
+                        else:
+                            student_name = enrollment["member"]
 
-								students_data.append(student_record)
-								student_counter += 1
+                        # Education level
+                        education_level = (
+                            {
+                                "id": user_profile.get("education_level"),
+                                "name": frappe.db.get_value(
+                                    "LMS Course Level",
+                                    user_profile.get("education_level"),
+                                    "education_level"
+                                )
+                            }
+                            if user_profile and user_profile.get("education_level")
+                            else {"id": None, "name": "Not Specified"}
+                        )
 
-						except Exception as e:
-							frappe.log_error(
-								f"Failed to process student {enrollment['member']}: {str(e)}",
-								"get_tutor_courses_with_enrollments",
-							)
-							continue
+                        # Build student record
+                        student_record = {
+                            "id": user_info.get("email", "") if user_info else "",
+                            "name": student_name,
+                            "avatar": user_info.get("user_image") if user_info else None,
+                            "educationLevel": education_level,
+                            "enrolledCourse": course.get("title", ""),
+                            "progress": enrollment.get("progress", 0),
+                            "dateEnrolled": enrollment.get("creation"),
+                            "courseFee": course.get("course_price"),
+                            "currency": course.get("currency"),
+                            "email": user_info.get("email", "") if user_info else "",
+                            "course_id": course["name"],
+                            "student_id": enrollment["member"],
+                        }
 
-			except Exception as e:
-				frappe.log_error(
-					f"Failed to process course {course['name']}: {str(e)}", "get_tutor_courses_with_enrollments"
-				)
-				continue
+                        students_data.append(student_record)
 
-		return {"success": True, "data": students_data, "count": len(students_data)}
+                    except Exception as e:
+                        frappe.log_error(
+                            f"Failed to process student {enrollment['member']}: {str(e)}",
+                            "get_tutor_courses_with_enrollments",
+                        )
+                        continue
 
-	except Exception as e:
-		frappe.log_error(frappe.get_traceback(), "Get Tutor Courses With Enrollments Failed")
-		return {"error": str(e), "success": False}
+            except Exception as e:
+                frappe.log_error(
+                    f"Failed to process course {course['name']}: {str(e)}",
+                    "get_tutor_courses_with_enrollments",
+                )
+                continue
+
+        return {"success": True, "data": students_data, "count": len(students_data)}
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Tutor Courses With Enrollments Failed")
+        return {"error": str(e), "success": False}
 
 @frappe.whitelist(allow_guest=True)
 def get_course_detail(course_name):
@@ -2276,7 +2290,7 @@ def serialize_course_new(course_name):
 						filters={"parent": course_name},
 						fields=["subject"]
 					)
-					
+
 					for s in all_subjects:
 						subject_doc = frappe.get_doc("Subject", s.subject)
 						subject = {
@@ -2285,7 +2299,7 @@ def serialize_course_new(course_name):
 						}
 						subjects.append(subject)
 					# course.subject = frappe.db.exists("Course Subject", {"course": course_name}) #subjects
-		
+
 		except Exception as e:
 			frappe.log_error(f"Failed to fetch subject: {str(e)}", "serialize_course")
 
