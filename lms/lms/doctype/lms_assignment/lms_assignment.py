@@ -60,7 +60,8 @@ def create_assignment():
         assignment_doc.test_score = data.get("test_score", "")
         assignment_doc.status = "Pending"
         assignment_doc.submitted = 0
-        assignment_doc.drafted = 1
+        assignment_doc.drafted = data.get("drafted", "")
+        assignment_doc.public = data.get("public", 0)
 
         if due_date:
             assignment_doc.due_date = due_date
@@ -214,6 +215,7 @@ def create_assignment():
                 "quiz_questions": quiz_questions_created,
                 "status": assignment_doc.status,
                 "drafted": bool(assignment_doc.drafted),
+                "public": bool(assignment_doc.public),
             },
         }
 
