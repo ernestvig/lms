@@ -275,7 +275,7 @@ def get_all_courses(limit=None, **kwargs):
 	filters = {}
 	filters.update(kwargs)
 	course_names = frappe.get_all(
-		"LMS Course", fields=["name"], filters=filters, limit=limit, order_by="creation desc"
+		"LMS Course", fields=["name"], filters=filters, limit=limit, order_by="enrollments desc"
 	)
 
 	courses = [serialize_course(c["name"]) for c in course_names]
