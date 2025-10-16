@@ -2189,6 +2189,19 @@ def get_course_detail(course_name):
 		else:
 			course_data["enrollment_status"] = "not_enrolled"
 
+		#Determine Bookmark status for logged-in user
+		if session_user and session_user != "Guest":
+			is_bookmarked = frappe.db.exists(
+				"Bookmark",
+				{
+					"reference_name": course_name,
+					"user": session_user
+				}
+			)
+			course_data["is_bookmarked"] = True if is_bookmarked else False
+		else:
+			course_data["is_bookmarked"] = False
+
 		return {
 			"success": True,
 			"data": course_data
