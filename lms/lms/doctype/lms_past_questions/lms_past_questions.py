@@ -257,10 +257,9 @@ def get_past_question_details(past_question):
     """
     Fetch detailed information about a specific Past Question.
     Includes related subject, category, educational level,
-    comments, and file folder entries.
+    comments, file folder entries, and bookmark status.
     """
     try:
-        # 1️⃣ Fetch the main past question record
         past_questions = frappe.get_all(
             "LMS Past Questions",
             filters={"name": past_question},
@@ -291,22 +290,31 @@ def get_past_question_details(past_question):
             return {"success": False, "error": "Past question not found"}
 
         data = []
+        session_user = frappe.session.user
+
         for q in past_questions:
-            # 2️⃣ Fetch child table: Past Question File Folder
             file_folders = frappe.get_all(
                 "Past Question File Folder",
                 filters={"parent": q["name"]},
                 fields=["files"],
             )
 
-            # 3️⃣ Fetch child table: Past Question Comments
             comments = frappe.get_all(
                 "Past Question Comments",
                 filters={"parent": q["name"]},
                 fields=["comment", "owner", "creation"],
             )
 
-            # 4️⃣ Append final structured data
+            is_bookmarked = False
+            if session_user and session_user != "Guest":
+                is_bookmarked = frappe.db.exists(
+                    "Bookmark",
+                    {
+                        "reference_name": q["name"],
+                        "user": session_user
+                    }
+                )
+
             data.append({
                 "Doctype": "LMS Past Questions",
                 "id": q["name"],
@@ -325,6 +333,7 @@ def get_past_question_details(past_question):
                 "file_url": q.get("file"),
                 "description": q.get("description"),
                 "download_count": q.get("download_count") or 0,
+                "is_bookmarked": True if is_bookmarked else False,
 
                 # Linked DocType: LMS Course Level
                 "educational_level": (
@@ -356,10 +365,8 @@ def get_past_question_details(past_question):
                     } if q.get("category") else None
                 ),
 
-                # ✅ Table field: File Folder items
                 "p_q_file_folder": file_folders or [],
 
-                # ✅ Table field: Comments
                 "comments": comments or [],
             })
 
