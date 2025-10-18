@@ -60,12 +60,13 @@ def create_assignment():
         assignment_doc.test_score = data.get("test_score", "")
         assignment_doc.status = "Pending"
         assignment_doc.educational_level = data.get("educational_level", "")
+        assignment_doc.due_date = data.get("due_date", "0000-00-00 00:00:00")
+        # assignment_doc.due_time = data.get("due_time", "")
+        assignment_doc.late_submission = 1 if data.get("late_submission", False) else 0
+        assignment_doc.set_reminders = 1 if data.get("set_reminders", False) else 0
         assignment_doc.submitted = 0
         assignment_doc.drafted = data.get("drafted", "")
         assignment_doc.public = data.get("public", 0)
-
-        if due_date:
-            assignment_doc.due_date = due_date
 
         # === Add Recipients ===
         recipients_created = []
