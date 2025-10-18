@@ -421,8 +421,8 @@ def update_assignment():
                                 "name": lms_question_doc.name,
                                 "question": question_data.get("question", "")
                             })
-
-                    # Create new LMS Question if not updating
+                    
+                    # Create new LMS Question if not updating existing
                     if not lms_question_doc:
                         lms_question_doc = frappe.new_doc("LMS Question")
                         lms_question_doc.question = question_data.get("question", "")
@@ -501,7 +501,11 @@ def update_assignment():
                         "error": f"Failed to update/create quiz question: {str(e)}"
                     }
 
-            # Delete orphaned LMS Questions (those that were removed)
+            # === CRITICAL FIX: Save assignment FIRST to remove child table links ===
+            assignment_doc.save(ignore_permissions=True)
+            frappe.db.commit()
+
+            # NOW delete orphaned LMS Questions (after the links are removed from DB)
             orphaned_questions = set(existing_lms_questions) - set(new_lms_questions)
             for lms_question_name in orphaned_questions:
                 if frappe.db.exists("LMS Question", lms_question_name):
@@ -525,7 +529,14 @@ def update_assignment():
 
         elif assignment_doc.type == "Quiz/Multiple choice" and "quiz_questions" in data and not data["quiz_questions"]:
             # If changing from quiz type or clearing all questions
-            # Delete existing LMS Questions if not used elsewhere
+            # Clear quiz questions first
+            assignment_doc.quiz_questions = []
+            
+            # Save assignment to remove child table links from database
+            assignment_doc.save(ignore_permissions=True)
+            frappe.db.commit()
+            
+            # Then delete existing LMS Questions if not used elsewhere
             for lms_question_name in existing_lms_questions:
                 if frappe.db.exists("LMS Question", lms_question_name):
                     try:
@@ -544,13 +555,11 @@ def update_assignment():
                             f"Failed to delete LMS Question {lms_question_name}: {str(e)}",
                             "LMS Question Deletion Error"
                         )
-            
-            # Clear quiz questions
-            assignment_doc.quiz_questions = []
 
-        # Save the updated assignment
-        assignment_doc.save(ignore_permissions=True)
-        frappe.db.commit()
+        # Save the updated assignment (if not already saved above)
+        if not (data.get("type") == "Quiz/Multiple choice" and "quiz_questions" in data):
+            assignment_doc.save(ignore_permissions=True)
+            frappe.db.commit()
 
         return {
             "success": True,
