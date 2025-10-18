@@ -58,12 +58,12 @@ def create_assignment():
         assignment_doc.resource_link = data.get("resource_link", "")
         assignment_doc.subject = data.get("subject", "")
         assignment_doc.test_score = data.get("test_score", "")
-        assignment_doc.status = "Submitted" if data.get("drafted", False) == 0 else "Pending"
+        assignment_doc.status = "Pending" # "Submitted" if data.get("drafted", False) == 0 else "Pending"
         assignment_doc.educational_level = data.get("educational_level", "")
         assignment_doc.due_date = data.get("due_date", "0000-00-00 00:00:00")
         assignment_doc.late_submission = 1 if data.get("late_submission", False) else 0
         assignment_doc.set_reminders = 1 if data.get("set_reminders", False) else 0
-        assignment_doc.submitted = 1 if data.get("drafted", False) == 0 else 0
+        assignment_doc.submitted = 0 # 1 if data.get("drafted", False) == 0 else 0
         assignment_doc.drafted = data.get("drafted", False)
         assignment_doc.public = data.get("public", 0)
 
@@ -291,7 +291,7 @@ def update_assignment():
         if "test_score" in data:
             assignment_doc.test_score = data.get("test_score")
         if "status" in data:
-            assignment_doc.status = "Submitted" if data.get("drafted") == 0 else "Pending"
+            assignment_doc.status = "Pending" # "Submitted" if data.get("drafted") == 0 else "Pending"
         if "educational_level" in data:
             assignment_doc.educational_level = data.get("educational_level")
         if "late_submission" in data:
@@ -299,7 +299,7 @@ def update_assignment():
         if "set_reminders" in data:
             assignment_doc.set_reminders = 1 if data.get("set_reminders") else 0
         if "submitted" in data:
-            assignment_doc.submitted = 1 if data.get("drafted") == 0 else 0
+            assignment_doc.submitted = 0 # 1 if data.get("drafted") == 0 else 0
         if "drafted" in data:
             assignment_doc.drafted = 1 if data.get("drafted") == 1 else 0
         if "public" in data:
