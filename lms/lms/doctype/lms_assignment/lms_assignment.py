@@ -59,6 +59,7 @@ def create_assignment():
         assignment_doc.subject = data.get("subject", "")
         assignment_doc.test_score = data.get("test_score", "")
         assignment_doc.status = "Pending"
+        assignment_doc.educational_level = data.get("educational_level", "")
         assignment_doc.submitted = 0
         assignment_doc.drafted = data.get("drafted", "")
         assignment_doc.public = data.get("public", 0)
