@@ -182,8 +182,14 @@ def submit_quiz(assignment, answers):
 		frappe.throw(_("Login required"))
 
 	assignment_doc = frappe.get_doc("LMS Assignment", assignment)
+		
 	if assignment_doc.type != "Quiz/Multiple choice":
 		frappe.throw(_("Assignment is not a quiz."))
+		
+	# Update Assignment status and submitted status to submitted
+	assignment_doc.status = "Submitted"
+	assignment_doc.submitted = 1
+	assignment_doc.save(ignore_permissions=True)
 
 	# Prevent duplicate submission
 	if frappe.db.exists(
