@@ -185,11 +185,12 @@ def submit_quiz(assignment, answers):
 		
 	if assignment_doc.type != "Quiz/Multiple choice":
 		frappe.throw(_("Assignment is not a quiz."))
-		
+
 	# Update Assignment status and submitted status to submitted
 	assignment_doc.status = "Submitted"
 	assignment_doc.submitted = 1
 	assignment_doc.save(ignore_permissions=True)
+	frappe.db.commit()
 
 	# Prevent duplicate submission
 	if frappe.db.exists(
