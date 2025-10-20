@@ -949,9 +949,9 @@ def get_all_student_assignment(user, limit=None, **kwargs):
                 "option_c",
                 "option_d",
                 "correct_answer",
-                "selected_answer",
-                "duration"
                 "explanation",
+                "duration",
+                "selected_answer"
             ],
         )
 
@@ -1027,7 +1027,7 @@ def get_all_student_assignment(user, limit=None, **kwargs):
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
         "duration": q.get("duration"),
-        "selected_answer": q.get("selected_answer"),
+        "selected_answer": q.get("selected_answer")
     }
     for q in quiz_questions
 ],

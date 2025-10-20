@@ -33,7 +33,8 @@
   "public",
   "late_submission",
   "set_reminders",
-  "attempts_allowed"
+  "attempts_allowed",
+  "attempts_made"
  ],
  "fields": [
   {
@@ -187,11 +188,17 @@
    "fieldname": "attempts_allowed",
    "fieldtype": "Int",
    "label": "Attempts Allowed"
+  },
+  {
+   "default": "0",
+   "fieldname": "attempts_made",
+   "fieldtype": "Int",
+   "label": "Attempts_made"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-06 16:29:52.825389",
+ "modified": "2025-10-20 18:18:23.363020",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",

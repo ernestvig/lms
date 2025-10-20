@@ -507,7 +507,6 @@ def serialize_course(course_name):
 		"Doctype": "LMS Course",
 	}
 
-
 @frappe.whitelist(allow_guest=True)
 def get_course_detail_old(course_name):
 	"""
