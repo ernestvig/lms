@@ -421,6 +421,8 @@ def serialize_course(course_name):
 							"option_d",
 							"correct_answer",
 							"marks",
+							"duration",
+							"selected_answer",
 						],
 					)
 				except Exception as e:
@@ -504,7 +506,6 @@ def serialize_course(course_name):
 		"introductory_video": course.video,
 		"Doctype": "LMS Course",
 	}
-
 
 @frappe.whitelist(allow_guest=True)
 def get_course_detail_old(course_name):
@@ -2414,7 +2415,7 @@ def serialize_course_new(course_name):
 							fields=[
 								"name", "question", "question_type",
 								"option_a", "option_b", "option_c", "option_d",
-								"correct_answer", "marks"
+								"correct_answer", "marks","duration","selected_answer"
 							],
 							order_by="idx",
 						)

@@ -61,8 +61,10 @@ class LMSAssignmentSubmission(Document):
 
 			# Check if attempts are available
 			attempts_allowed = assignment.get("attempts_allowed", 1)
-			if attempts_allowed <= 0:
-				frappe.throw("No attempts remaining for this assignment.")
+			attempts_made = assignment.get("attempts_made", 0)
+
+			if attempts_made >= attempts_allowed:
+				frappe.throw(f"No attempts remaining for this assignment. ({attempts_made}/{attempts_allowed} used)")
 
 			total_score = 0
 			max_possible_score = 0
@@ -128,8 +130,9 @@ class LMSAssignmentSubmission(Document):
 Percentage: {percentage:.2f}%
 Final Score: {final_score:.2f}/{test_score_value}"""
 
-			# Decrease attempt count on the assignment using direct DB update
-			frappe.db.set_value("LMS Assignment", self.assignment, "attempts_allowed", attempts_allowed - 1)
+			# INCREMENT attempts_made instead of decrementing attempts_allowed
+			new_attempts_made = attempts_made + 1
+			frappe.db.set_value("LMS Assignment", self.assignment, "attempts_made", new_attempts_made)
 			frappe.db.commit()
 
 			self.save(ignore_permissions=True)
@@ -137,8 +140,6 @@ Final Score: {final_score:.2f}/{test_score_value}"""
 		except Exception as e:
 			frappe.log_error(title="Auto Grade Quiz Error", message=frappe.get_traceback())
 			raise
-
-
 
 @frappe.whitelist()
 def upload_assignment(
@@ -196,7 +197,6 @@ def upload_assignment(
 		"submission": doc.name,
 	}
 
-
 @frappe.whitelist()
 def get_assignment(lesson):
 	assignment = frappe.db.get_value(
@@ -242,21 +242,19 @@ def submit_quiz(assignment, answers):
 		if assignment_doc.type != "Quiz/Multiple choice":
 			frappe.throw(_("Assignment is not a quiz."))
 
+		# Get attempts tracking
+		attempts_allowed = assignment_doc.get("attempts_allowed", 1)
+		attempts_made = assignment_doc.get("attempts_made", 0)
+
+		# Check if user has exceeded attempts
+		if attempts_made >= attempts_allowed:
+			frappe.throw(_(f"You have used all your attempts for this assignment. ({attempts_made}/{attempts_allowed} used)"))
+
 		# Count existing submissions for this user
 		submission_count = frappe.db.count(
 			"LMS Assignment Submission",
 			{"assignment": assignment, "member": frappe.session.user}
 		)
-
-		# Get attempts allowed (with default fallback)
-		attempts_allowed = assignment_doc.get("attempts_allowed", 1)
-
-		# Calculate max attempts based on submissions + remaining attempts
-		max_attempts = submission_count + attempts_allowed
-
-		# Check if user has exceeded attempts
-		if attempts_allowed <= 0:
-			frappe.throw(_(f"You have used all your attempts for this assignment."))
 
 		# Create submission doc
 		submission = frappe.get_doc(
@@ -281,11 +279,10 @@ def submit_quiz(assignment, answers):
 
 		submission.insert(ignore_permissions=True)
 
-		# Now run auto-grading
+		# Now run auto-grading (this will increment attempts_made)
 		submission.auto_grade_quiz()
 
 		# Update Assignment status to Submitted (only on first submission)
-		# Use direct DB update to avoid timestamp conflicts
 		if submission_count == 0:
 			frappe.db.set_value("LMS Assignment", assignment, {
 				"status": "Submitted",
@@ -298,7 +295,8 @@ def submit_quiz(assignment, answers):
 		submission.reload()
 
 		# Get updated attempts from database
-		attempts_remaining = frappe.db.get_value("LMS Assignment", assignment, "attempts_allowed")
+		updated_attempts_made = frappe.db.get_value("LMS Assignment", assignment, "attempts_made")
+		attempts_remaining = attempts_allowed - updated_attempts_made
 
 		# Prepare response with detailed answers
 		detailed_answers = []
@@ -319,9 +317,9 @@ def submit_quiz(assignment, answers):
 			"percentage": round((submission.get("score", 0) / submission.get("total_score", 100) * 100), 2) if submission.get("total_score") else 0,
 			"status": submission.status,
 			"answers": detailed_answers,
-			"attempts_remaining": attempts_remaining or 0,
-			"attempt_number": submission_count + 1,
-			"total_attempts": max_attempts,
+			"attempts_made": updated_attempts_made,
+			"attempts_allowed": attempts_allowed,
+			"attempts_remaining": attempts_remaining if attempts_remaining > 0 else 0,
 			"comments": submission.get("comments", "")
 		}
 

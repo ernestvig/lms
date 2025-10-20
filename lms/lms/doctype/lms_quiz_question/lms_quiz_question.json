@@ -20,7 +20,9 @@
   "option_d",
   "section_break_anam",
   "explanation",
-  "option_a"
+  "option_a",
+  "duration",
+  "selected_answer"
  ],
  "fields": [
   {
@@ -106,12 +108,22 @@
    "fieldname": "explanation",
    "fieldtype": "Text",
    "label": "Explanation"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Time",
+   "label": "Duration"
+  },
+  {
+   "fieldname": "selected_answer",
+   "fieldtype": "Data",
+   "label": "Selected_answer"
   }
  ],
  "index_web_pages_for_search": 1,
  "istable": 1,
  "links": [],
- "modified": "2025-10-13 16:55:25.484126",
+ "modified": "2025-10-20 17:56:44.731412",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Quiz Question",
