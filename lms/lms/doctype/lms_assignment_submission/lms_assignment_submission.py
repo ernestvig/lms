@@ -10,11 +10,11 @@ from frappe.utils import validate_url
 
 class LMSAssignmentSubmission(Document):
 	def validate(self):
-		self.validate_duplicates()
+		# self.validate_duplicates()
 		self.validate_url()
 		self.validate_status()
 
-	def validate_duplicates(self):
+	# def validate_duplicates(self):
 		if frappe.db.exists(
 			"LMS Assignment Submission",
 			{"assignment": self.assignment, "member": self.member, "name": ["!=", self.name]},
@@ -50,6 +50,94 @@ class LMSAssignmentSubmission(Document):
 			}
 		)
 		make_notification_logs(notification, [self.member])
+
+	def auto_grade_quiz(self):
+		"""
+		Go through quiz_questions from assignment, compare with answers in self.quiz_answers.
+		Calculate percentage based on test_score and track attempts.
+		"""
+		try:
+			assignment = frappe.get_doc("LMS Assignment", self.assignment)
+
+			# Check if attempts are available
+			attempts_allowed = assignment.get("attempts_allowed", 1)
+			if attempts_allowed <= 0:
+				frappe.throw("No attempts remaining for this assignment.")
+
+			total_score = 0
+			max_possible_score = 0
+
+			# Get quiz questions
+			quiz_questions = assignment.get("quiz_questions", [])
+
+			if not quiz_questions:
+				frappe.throw("No quiz questions found in this assignment.")
+
+			# Create a dict of student answers for easy lookup
+			student_answers = {ans.question: ans.selected_option for ans in self.quiz_answers}
+
+			# Clear existing quiz_answers to avoid duplicates
+			self.quiz_answers = []
+
+			for q in quiz_questions:
+				# Get marks for this question (default to 1 if not set)
+				question_marks = q.get("marks", 1)
+				max_possible_score += question_marks
+
+				# Get student's selected option
+				selected = student_answers.get(q.name, "")
+
+				# Check if answer is correct
+				correct_answer = q.get("correct_answer", "").strip()
+				is_correct = selected.strip() == correct_answer if selected and correct_answer else False
+				marks = question_marks if is_correct else 0
+				total_score += marks
+
+				# Append row
+				self.append(
+					"quiz_answers",
+					{
+						"question": q.name,
+						"selected_option": selected,
+						"is_correct": 1 if is_correct else 0,
+						"marks_awarded": marks,
+					}
+				)
+
+			# Get test_score from assignment (default to 100 if not set)
+			test_score_value = float(assignment.get("test_score") or 100)
+
+			# Calculate percentage based on marks obtained vs max possible
+			if max_possible_score > 0:
+				percentage = (total_score / max_possible_score) * 100
+				# Scale to test_score
+				final_score = (percentage / 100) * test_score_value
+			else:
+				percentage = 0
+				final_score = 0
+
+			# Set scores
+			self.score = round(final_score, 2)
+			self.total_score = int(test_score_value)
+
+			# Set status based on percentage (50% pass threshold)
+			self.status = "Pass" if percentage >= 50 else "Fail"
+
+			# Set comments with detailed breakdown
+			self.comments = f"""Auto graded: {total_score}/{max_possible_score} correct
+Percentage: {percentage:.2f}%
+Final Score: {final_score:.2f}/{test_score_value}"""
+
+			# Decrease attempt count on the assignment using direct DB update
+			frappe.db.set_value("LMS Assignment", self.assignment, "attempts_allowed", attempts_allowed - 1)
+			frappe.db.commit()
+
+			self.save(ignore_permissions=True)
+
+		except Exception as e:
+			frappe.log_error(title="Auto Grade Quiz Error", message=frappe.get_traceback())
+			raise
+
 
 
 @frappe.whitelist()
@@ -124,7 +212,7 @@ def get_assignment(lesson):
 
 
 @frappe.whitelist()
-def grade_assignment(name, result, comments, score, totalScore,file):
+def grade_assignment(name, result, comments, score, totalScore, file):
 	doc = frappe.get_doc("LMS Assignment Submission", name)
 	doc.status = result
 	doc.comments = comments
@@ -135,109 +223,111 @@ def grade_assignment(name, result, comments, score, totalScore,file):
 	return {"message": "Assignment graded successfully."}
 
 
-def after_insert(self):
-	# Auto grade if assignment is quiz
-	assignment_type = frappe.db.get_value("LMS Assignment", self.assignment, "type")
-	if assignment_type == "Quiz/Multiple choice":
-		self.auto_grade_quiz()
-
-
-def auto_grade_quiz(self):
-	"""
-	Go through quiz_questions from assignment, compare with answers in self.quiz_answers.
-	"""
-	assignment = frappe.get_doc("LMS Assignment", self.assignment)
-	total_score = 0
-
-	for q in assignment.quiz_questions:
-		# find student selected option
-		selected = next((a.selected_option for a in self.quiz_answers if a.question == q.name), None)
-		is_correct = selected and (selected.strip() == q.correct_answer)
-		marks = q.marks if is_correct else 0
-		total_score += marks
-
-		# update / append row
-		self.append(
-			"quiz_answers",
-			{
-				"question": q.name,
-				"selected_option": selected or "",
-				"is_correct": is_correct,
-				"marks_awarded": marks,
-			},
-		)
-
-	# set status automatically if quiz
-	self.status = "Pass" if total_score >= 0 else "Fail"  # adjust threshold
-	self.db_set("comments", f"Auto graded: {total_score} points")
-	self.save(ignore_permissions=True)
-
-
 @frappe.whitelist()
 def submit_quiz(assignment, answers):
 	"""
 	answers = [{ "question": "QQ-230924-00001", "selected_option": "A" }, ...]
 	"""
-	if frappe.session.user == "Guest":
-		frappe.throw(_("Login required"))
+	try:
+		if frappe.session.user == "Guest":
+			frappe.throw(_("Login required"))
 
-	assignment_doc = frappe.get_doc("LMS Assignment", assignment)
-		
-	if assignment_doc.type != "Quiz/Multiple choice":
-		frappe.throw(_("Assignment is not a quiz."))
+		# Parse answers if they come as JSON string
+		if isinstance(answers, str):
+			import json
+			answers = json.loads(answers)
 
-	# Update Assignment status and submitted status to submitted
-	assignment_doc.status = "Submitted"
-	assignment_doc.submitted = 1
-	assignment_doc.save(ignore_permissions=True)
-	frappe.db.commit()
+		assignment_doc = frappe.get_doc("LMS Assignment", assignment)
 
-	# Prevent duplicate submission
-	if frappe.db.exists(
-		"LMS Assignment Submission", {"assignment": assignment, "member": frappe.session.user}
-	):
-		frappe.throw(_("You have already submitted this quiz."))
+		if assignment_doc.type != "Quiz/Multiple choice":
+			frappe.throw(_("Assignment is not a quiz."))
 
-	total_score = 0
-	detailed_answers = []
+		# Count existing submissions for this user
+		submission_count = frappe.db.count(
+			"LMS Assignment Submission",
+			{"assignment": assignment, "member": frappe.session.user}
+		)
 
-	for ans in answers:
-		q = frappe.get_doc("LMS Quiz Question", ans["question"])
-		selected = ans.get("selected_option")
-		correct = q.correct_answer
+		# Get attempts allowed (with default fallback)
+		attempts_allowed = assignment_doc.get("attempts_allowed", 1)
 
-		is_correct = selected == correct
-		marks = q.marks if hasattr(q, "marks") else (1 if is_correct else 0)
+		# Calculate max attempts based on submissions + remaining attempts
+		max_attempts = submission_count + attempts_allowed
 
-		detailed_answers.append(
+		# Check if user has exceeded attempts
+		if attempts_allowed <= 0:
+			frappe.throw(_(f"You have used all your attempts for this assignment."))
+
+		# Create submission doc
+		submission = frappe.get_doc(
 			{
-				"question": q.name,
-				"selected_option": selected,
-				"correct_option": correct,
-				"is_correct": is_correct,
-				"marks_awarded": marks,
+				"doctype": "LMS Assignment Submission",
+				"assignment": assignment,
+				"member": frappe.session.user,
+				"type": assignment_doc.type,
+				"status": "Not Graded",
 			}
 		)
 
-		total_score += marks
+		# Add quiz answers to submission
+		for ans in answers:
+			submission.append(
+				"quiz_answers",
+				{
+					"question": ans.get("question"),
+					"selected_option": ans.get("selected_option", ""),
+				}
+			)
 
-	# Create submission doc
-	submission = frappe.get_doc(
-		{
-			"doctype": "LMS Assignment Submission",
-			"assignment": assignment,
-			"member": frappe.session.user,
-			"type": assignment_doc.type,
-			"status": "Pass" if total_score > 0 else "Fail",
-			"comments": f"Auto-graded score: {total_score}",
-			# store answers as JSON string
-			"answer": frappe.as_json(detailed_answers),
+		submission.insert(ignore_permissions=True)
+
+		# Now run auto-grading
+		submission.auto_grade_quiz()
+
+		# Update Assignment status to Submitted (only on first submission)
+		# Use direct DB update to avoid timestamp conflicts
+		if submission_count == 0:
+			frappe.db.set_value("LMS Assignment", assignment, {
+				"status": "Submitted",
+				"submitted": 1
+			})
+
+		frappe.db.commit()
+
+		# Reload submission to get updated values
+		submission.reload()
+
+		# Get updated attempts from database
+		attempts_remaining = frappe.db.get_value("LMS Assignment", assignment, "attempts_allowed")
+
+		# Prepare response with detailed answers
+		detailed_answers = []
+		for quiz_ans in submission.quiz_answers:
+			detailed_answers.append(
+				{
+					"question": quiz_ans.question,
+					"selected_option": quiz_ans.selected_option,
+					"is_correct": quiz_ans.get("is_correct", 0),
+					"marks_awarded": quiz_ans.get("marks_awarded", 0),
+				}
+			)
+
+		return {
+			"submission": submission.name,
+			"score": submission.get("score", 0),
+			"total_score": submission.get("total_score", 100),
+			"percentage": round((submission.get("score", 0) / submission.get("total_score", 100) * 100), 2) if submission.get("total_score") else 0,
+			"status": submission.status,
+			"answers": detailed_answers,
+			"attempts_remaining": attempts_remaining or 0,
+			"attempt_number": submission_count + 1,
+			"total_attempts": max_attempts,
+			"comments": submission.get("comments", "")
 		}
-	)
-	submission.insert(ignore_permissions=True)
 
-	return {"submission": submission.name, "score": total_score, "answers": detailed_answers}
-
+	except Exception as e:
+		frappe.log_error(title="Submit Quiz Error", message=frappe.get_traceback())
+		frappe.throw(_(f"Error submitting quiz: {str(e)}"))
 
 @frappe.whitelist()
 def get_student_submitted_assignments(student):
@@ -260,7 +350,8 @@ def get_student_submitted_assignments(student):
 
 	return {"success": True, "data": submitted_assignments}
 
-#get all the submissions for an assignment created by a tutor
+
+# get all the submissions for an assignment created by a tutor
 @frappe.whitelist()
 def get_all_assignment_submissions(tutor):
 	assignments = frappe.get_all(
