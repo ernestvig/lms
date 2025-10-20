@@ -373,13 +373,13 @@ def update_assignment():
 
                 try:
                     lms_question_doc = None
-                    
+
                     # Check if updating existing question (by looking for lms_question_name)
                     if question_data.get("lms_question_name"):
                         # Update existing LMS Question
                         if frappe.db.exists("LMS Question", question_data.get("lms_question_name")):
                             lms_question_doc = frappe.get_doc("LMS Question", question_data.get("lms_question_name"))
-                            
+
                             # Update fields
                             lms_question_doc.question = question_data.get("question", "")
                             lms_question_doc.type = "Choices"
@@ -421,7 +421,7 @@ def update_assignment():
                                 "name": lms_question_doc.name,
                                 "question": question_data.get("question", "")
                             })
-                    
+
                     # Create new LMS Question if not updating existing
                     if not lms_question_doc:
                         lms_question_doc = frappe.new_doc("LMS Question")
@@ -512,12 +512,12 @@ def update_assignment():
                     try:
                         # Check if this question is used in other assignments
                         other_usage = frappe.db.sql("""
-                            SELECT parent 
-                            FROM `tabLMS Quiz Question` 
+                            SELECT parent
+                            FROM `tabLMS Quiz Question`
                             WHERE question = %s AND parent != %s
                             LIMIT 1
                         """, (lms_question_name, assignment_doc.name))
-                        
+
                         if not other_usage:
                             frappe.delete_doc("LMS Question", lms_question_name, ignore_permissions=True)
                             lms_questions_deleted.append(lms_question_name)
@@ -531,22 +531,22 @@ def update_assignment():
             # If changing from quiz type or clearing all questions
             # Clear quiz questions first
             assignment_doc.quiz_questions = []
-            
+
             # Save assignment to remove child table links from database
             assignment_doc.save(ignore_permissions=True)
             frappe.db.commit()
-            
+
             # Then delete existing LMS Questions if not used elsewhere
             for lms_question_name in existing_lms_questions:
                 if frappe.db.exists("LMS Question", lms_question_name):
                     try:
                         other_usage = frappe.db.sql("""
-                            SELECT parent 
-                            FROM `tabLMS Quiz Question` 
+                            SELECT parent
+                            FROM `tabLMS Quiz Question`
                             WHERE question = %s AND parent != %s
                             LIMIT 1
                         """, (lms_question_name, assignment_doc.name))
-                        
+
                         if not other_usage:
                             frappe.delete_doc("LMS Question", lms_question_name, ignore_permissions=True)
                             lms_questions_deleted.append(lms_question_name)
@@ -793,67 +793,6 @@ def add_quiz_questions_to_assignment():
         frappe.log_error(frappe.get_traceback(), "Add Quiz Questions Failed")
         return {"error": str(e)}
 
-
-@frappe.whitelist(allow_guest=True)
-def get_assignment_detail(assignment_name):
-    """
-    Fetch assignment details with recipients and quiz questions
-    """
-    try:
-        # Get assignment basic info
-        assignment_data = frappe.db.sql(
-            """
-            SELECT name, title, company, question, type, grade_assignment, file,
-                   resource_links, show_answer, answer, due_date, creation, owner
-            FROM `tabLMS Assignment`
-            WHERE name = %(assignment_name)s
-        """,
-            {"assignment_name": assignment_name},
-            as_dict=True,
-        )
-
-        if not assignment_data:
-            return {"error": "Assignment not found"}
-
-        assignment = assignment_data[0]
-
-        # Get recipients
-        recipients = frappe.db.sql(
-            """
-            SELECT students
-            FROM `tabAssignment Student`
-            WHERE parent = %(assignment_name)s
-            ORDER BY idx
-        """,
-            {"assignment_name": assignment_name},
-            as_dict=True,
-        )
-
-        # Get quiz questions if it's a quiz assignment
-        quiz_questions = []
-        if assignment.get("type") == "Quiz/Multiple choice":
-            quiz_questions = frappe.db.sql(
-                """
-                SELECT question, question_type, option_a, option_b, option_c, option_d,
-                       correct_answer, marks, points
-                FROM `tabLMS Quiz Question`
-                WHERE parent = %(assignment_name)s
-                ORDER BY idx
-            """,
-                {"assignment_name": assignment_name},
-                as_dict=True,
-            )
-
-        return {
-            "success": True,
-            "data": {"assignment": assignment, "recipients": recipients, "quiz_questions": quiz_questions},
-        }
-
-    except Exception as e:
-        frappe.log_error(frappe.get_traceback(), "Get Assignment Detail Failed")
-        return {"error": str(e)}
-
-
 @frappe.whitelist()
 def get_assignments_for_student(student_email):
     """
@@ -1010,6 +949,8 @@ def get_all_student_assignment(user, limit=None, **kwargs):
                 "option_c",
                 "option_d",
                 "correct_answer",
+                "selected_answer",
+                "duration"
                 "explanation",
             ],
         )
@@ -1085,6 +1026,8 @@ def get_all_student_assignment(user, limit=None, **kwargs):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
+        "duration": q.get("duration"),
+        "selected_answer": q.get("selected_answer"),
     }
     for q in quiz_questions
 ],
@@ -1169,6 +1112,8 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
                 "option_d",
                 "correct_answer",
                 "explanation",
+                "duration",
+                "selected_answer"
             ],
         )
 
@@ -1253,6 +1198,8 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
+        "duration": q.get("duration"),
+		"selected_answer": q.get("selected_answer"),
     }
     for q in quiz_questions
 ],
@@ -1326,6 +1273,8 @@ def get_assignment_details(assignment):
             "option_d",
             "correct_answer",
             "explanation",
+            "duration",
+            "selected_answer"
         ],
     )
 
@@ -1412,6 +1361,8 @@ def get_assignment_details(assignment):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
+        "duration": q.get("duration"),
+        "selected_answer": q.get("selected_answer"),
     }
     for q in quiz_questions
 ],
@@ -1507,6 +1458,8 @@ def get_overdue_assignments(student):
                 "option_d",
                 "correct_answer",
                 "explanation",
+                "duration",
+                "selected_answer"
             ],
         )
 
@@ -1554,6 +1507,8 @@ def get_overdue_assignments(student):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
+        "duration": q.get("duration"),
+        "selected_answer": q.get("selected_answer"),
     }
     for q in quiz_questions
 ],
