@@ -34,7 +34,8 @@
   "late_submission",
   "set_reminders",
   "attempts_allowed",
-  "attempts_made"
+  "attempts_made",
+  "duration"
  ],
  "fields": [
   {
@@ -194,11 +195,16 @@
    "fieldname": "attempts_made",
    "fieldtype": "Int",
    "label": "Attempts_made"
+  },
+  {
+   "fieldname": "duration",
+   "fieldtype": "Time",
+   "label": "Duration"
   }
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2025-10-20 18:18:23.363020",
+ "modified": "2025-10-21 09:33:22.651349",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Assignment",

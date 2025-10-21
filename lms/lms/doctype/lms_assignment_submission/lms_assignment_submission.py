@@ -329,6 +329,9 @@ def submit_quiz(assignment, answers):
 
 @frappe.whitelist()
 def get_student_submitted_assignments(student):
+	"""
+	Get all assignments submitted by a student with enriched user details and quiz answers.
+	"""
 	students_link = frappe.get_all(
 		"PL Students",
 		filters={"students": student},
@@ -346,22 +349,112 @@ def get_student_submitted_assignments(student):
 		order_by="creation desc",
 	)
 
-	return {"success": True, "data": submitted_assignments}
+	# Enrich submissions with user details and quiz answers
+	enriched_submissions = []
+	for submission in submitted_assignments:
+		# Get member (student) details
+		member_details = {}
+		if submission.get("member"):
+			member_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("member")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if member_user:
+				member_details = {
+					"full_name": member_user[0].get("full_name", ""),
+					"email": member_user[0].get("email", ""),
+					"user_image": member_user[0].get("user_image", "")
+				}
 
+		# Get owner (instructor) details from submission
+		owner_details = None
+		if submission.get("owner"):
+			owner_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("owner")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if owner_user:
+				owner_details = {
+					"full_name": owner_user[0].get("full_name", ""),
+					"email": owner_user[0].get("email", ""),
+					"user_image": owner_user[0].get("user_image", "")
+				}
 
-# get all the submissions for an assignment created by a tutor
+		# Get quiz answers for this submission if it's a quiz
+		quiz_answers = []
+		if submission.get("type") == "Quiz/Multiple choice":
+			quiz_answers = frappe.get_all(
+				"LMS Quiz Answer",
+				filters={"parent": submission.get("name")},
+				fields=[
+					"name",
+					"question",
+					"selected_option",
+					"is_correct",
+					"marks_awarded"
+				],
+				order_by="idx asc"
+			)
+
+		# Get assignment details (optional - for additional context)
+		assignment_details = frappe.get_all(
+			"LMS Assignment",
+			filters={"name": submission.get("assignment")},
+			fields=["title", "type", "test_score", "attempts_allowed", "attempts_made"],
+			limit=1
+		)
+		assignment_info = assignment_details[0] if assignment_details else {}
+
+		# Build enriched submission object
+		enriched_submission = {
+			"id": submission.get("name"),
+			"assignment_id": submission.get("assignment"),
+			"assignment_title": submission.get("assignment_title", ""),
+			"assignment_type": submission.get("type", ""),
+			"member": member_details,  # ← Student details
+			"owner": owner_details,  # ← Instructor/Creator details
+			"status": submission.get("status", ""),
+			"score": submission.get("score"),
+			"total_score": submission.get("total_score"),
+			"percentage": round((submission.get("score", 0) / submission.get("total_score", 100) * 100), 2) if submission.get("total_score") else 0,
+			"comments": submission.get("comments", ""),
+			"question": submission.get("question", ""),
+			"answer": submission.get("answer", ""),
+			"assignment_attachment": submission.get("assignment_attachment", ""),
+			"file": submission.get("file", ""),
+			"created_at": submission.get("creation"),
+			"modified_at": submission.get("modified"),
+			"quiz_answers": quiz_answers,
+			"attempts_made": assignment_info.get("attempts_made", 0),
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+		}
+
+		enriched_submissions.append(enriched_submission)
+
+	return {"success": True, "data": enriched_submissions}
+
 @frappe.whitelist()
 def get_all_assignment_submissions(tutor):
+	"""
+	Get all submissions for assignments created by a tutor with enriched user details.
+	"""
 	assignments = frappe.get_all(
 		"LMS Assignment",
 		filters={"owner": tutor},
-		fields=["name", "title"],
+		fields=["name", "title", "type", "test_score", "attempts_allowed", "attempts_made"],
 	)
 
 	if not assignments:
 		return {"success": True, "data": []}
 
 	assignment_ids = [a.name for a in assignments]
+
+	# Create a lookup dict for assignment info
+	assignment_lookup = {a.name: a for a in assignments}
 
 	submissions = frappe.get_all(
 		"LMS Assignment Submission",
@@ -370,4 +463,167 @@ def get_all_assignment_submissions(tutor):
 		order_by="creation desc",
 	)
 
-	return {"success": True, "data": submissions}
+	# Enrich submissions with user details and quiz answers
+	enriched_submissions = []
+	for submission in submissions:
+		# Get member (student) details
+		member_details = {}
+		if submission.get("member"):
+			member_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("member")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if member_user:
+				member_details = {
+					"full_name": member_user[0].get("full_name", ""),
+					"email": member_user[0].get("email", ""),
+					"user_image": member_user[0].get("user_image", "")
+				}
+
+		# Get owner (instructor/tutor) details
+		owner_details = {}
+		if submission.get("owner"):
+			owner_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("owner")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if owner_user:
+				owner_details = {
+					"full_name": owner_user[0].get("full_name", ""),
+					"email": owner_user[0].get("email", ""),
+					"user_image": owner_user[0].get("user_image", "")
+				}
+
+		# Get quiz answers for this submission if it's a quiz
+		quiz_answers = []
+		if submission.get("type") == "Quiz/Multiple choice":
+			quiz_answers = frappe.get_all(
+				"LMS Quiz Answer",
+				filters={"parent": submission.get("name")},
+				fields=[
+					"name",
+					"question",
+					"selected_option",
+					"is_correct",
+					"marks_awarded"
+				],
+				order_by="idx asc"
+			)
+
+		# Get assignment info from lookup
+		assignment_info = assignment_lookup.get(submission.get("assignment"), {})
+
+		# Build enriched submission object
+		enriched_submission = {
+			"id": submission.get("name"),
+			"assignment_id": submission.get("assignment"),
+			"assignment_title": submission.get("assignment_title", ""),
+			"assignment_type": submission.get("type", ""),
+			"member": member_details,  # ← Student details
+			"owner": owner_details,  # ← Instructor/Creator details
+			"status": submission.get("status", ""),
+			"score": submission.get("score"),
+			"total_score": submission.get("total_score"),
+			"percentage": round((submission.get("score", 0) / submission.get("total_score", 100) * 100), 2) if submission.get("total_score") else 0,
+			"comments": submission.get("comments", ""),
+			"question": submission.get("question", ""),
+			"answer": submission.get("answer", ""),
+			"assignment_attachment": submission.get("assignment_attachment", ""),
+			"file": submission.get("file", ""),
+			"created_at": submission.get("creation"),
+			"modified_at": submission.get("modified"),
+			"quiz_answers": quiz_answers,
+			"attempts_made": assignment_info.get("attempts_made", 0),
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+		}
+
+		enriched_submissions.append(enriched_submission)
+
+	return {"success": True, "data": enriched_submissions}
+
+@frappe.whitelist()
+def get_assignment_submission_details(submission_id):
+	"""
+	Get detailed information about a specific assignment submission including selected answers.
+	"""
+	try:
+		# Check if submission exists
+		if not frappe.db.exists("LMS Assignment Submission", submission_id):
+			return {
+				"success": False,
+				"message": "Submission not found",
+				"data": None
+			}
+
+		# Get submission details
+		submission = frappe.get_doc("LMS Assignment Submission", submission_id)
+
+		# Get assignment details
+		assignment = frappe.get_doc("LMS Assignment", submission.assignment)
+
+		# Get quiz answers with full details
+		quiz_answers = []
+		for ans in submission.quiz_answers:
+			# Get the quiz question details from assignment
+			quiz_question = None
+			for q in assignment.quiz_questions:
+				if q.name == ans.question:
+					quiz_question = q
+					break
+
+			# Get LMS Question details if available
+			question_text = ""
+			if quiz_question and quiz_question.question:
+				lms_question = frappe.get_doc("LMS Question", quiz_question.question)
+				question_text = lms_question.question
+
+			quiz_answers.append({
+				"question_id": ans.question,
+				"question_text": question_text or (quiz_question.question if quiz_question else ""),
+				"selected_option": ans.selected_option,
+				"correct_answer": quiz_question.correct_answer if quiz_question else None,
+				"is_correct": ans.get("is_correct", 0),
+				"marks_awarded": ans.get("marks_awarded", 0),
+				"marks_possible": quiz_question.marks if quiz_question else 0,
+				"option_a": quiz_question.option_a if quiz_question else "",
+				"option_b": quiz_question.option_b if quiz_question else "",
+				"option_c": quiz_question.option_c if quiz_question else "",
+				"option_d": quiz_question.option_d if quiz_question else "",
+				"explanation": quiz_question.explanation if quiz_question else ""
+			})
+
+		# Build response
+		response_data = {
+			"submission_id": submission.name,
+			"assignment_id": submission.assignment,
+			"assignment_title": assignment.title,
+			"assignment_type": assignment.type,
+			"member": submission.member,
+			"status": submission.status,
+			"score": submission.score,
+			"total_score": submission.total_score,
+			"percentage": round((submission.score / submission.total_score * 100), 2) if submission.total_score else 0,
+			"comments": submission.comments,
+			"created_at": submission.creation,
+			"modified_at": submission.modified,
+			"quiz_answers": quiz_answers,
+			"attempts_made": frappe.db.get_value("LMS Assignment", submission.assignment, "attempts_made"),
+			"attempts_allowed": frappe.db.get_value("LMS Assignment", submission.assignment, "attempts_allowed")
+		}
+
+		return {
+			"success": True,
+			"data": response_data
+		}
+
+	except Exception as e:
+		frappe.log_error(f"Error in get_assignment_submission_details: {str(e)}")
+		return {
+			"success": False,
+			"message": f"Error fetching submission details: {str(e)}",
+			"data": None
+		}
