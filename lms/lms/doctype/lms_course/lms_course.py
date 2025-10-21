@@ -270,18 +270,26 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None)
 
 
 @frappe.whitelist(allow_guest=True)
-def get_all_courses(limit=None, **kwargs):
+def get_all_courses(limit=None, search=None, **kwargs):
 	limit = int(limit) if limit else 100
-	filters = {}
+	filters = {"published": 1}
 	filters.update(kwargs)
+
+	# Add search filter for title if search parameter is provided
+	if search:
+		filters["title"] = ["like", f"%{search}%"]
+
 	course_names = frappe.get_all(
-		"LMS Course", fields=["name"], filters=filters, limit=limit, order_by="enrollments desc"
+		"LMS Course",
+		fields=["name"],
+		filters=filters,
+		limit=limit,
+		order_by="enrollments desc"
 	)
 
 	courses = [serialize_course(c["name"]) for c in course_names]
 
 	return {"success": True, "data": courses, "count": len(courses)}
-
 
 def serialize_course(course_name):
 	"""Return a structured course with profile, chapters, and lessons"""

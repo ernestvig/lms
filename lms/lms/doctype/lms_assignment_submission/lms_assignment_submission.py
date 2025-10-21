@@ -15,14 +15,14 @@ class LMSAssignmentSubmission(Document):
 		self.validate_status()
 
 	# def validate_duplicates(self):
-		if frappe.db.exists(
-			"LMS Assignment Submission",
-			{"assignment": self.assignment, "member": self.member, "name": ["!=", self.name]},
-		):
-			lesson_title = frappe.db.get_value("Course Lesson", self.lesson, "title")
-			frappe.throw(
-				_("Assignment for Lesson {0} by {1} already exists.").format(lesson_title, self.member_name)
-			)
+		# if frappe.db.exists(
+		# 	"LMS Assignment Submission",
+		# 	{"assignment": self.assignment, "member": self.member, "name": ["!=", self.name]},
+		# ):
+		# 	lesson_title = frappe.db.get_value("Course Lesson", self.lesson, "title")
+		# 	frappe.throw(
+		# 		_("Assignment for Lesson {0} by {1} already exists.").format(lesson_title, self.member_name)
+		# 	)
 
 	def validate_url(self):
 		if self.type == "URL" and not validate_url(self.answer):
@@ -54,14 +54,20 @@ class LMSAssignmentSubmission(Document):
 	def auto_grade_quiz(self):
 		"""
 		Go through quiz_questions from assignment, compare with answers in self.quiz_answers.
-		Calculate percentage based on test_score and track attempts.
+		Calculate percentage based on test_score and track attempts PER STUDENT.
 		"""
 		try:
 			assignment = frappe.get_doc("LMS Assignment", self.assignment)
 
-			# Check if attempts are available
+			# Check if attempts are available - COUNT PER STUDENT
 			attempts_allowed = assignment.get("attempts_allowed", 1)
-			attempts_made = assignment.get("attempts_made", 0)
+
+			# Count how many times THIS STUDENT has already submitted THIS ASSIGNMENT
+			# Note: We count existing submissions BEFORE this one is saved
+			attempts_made = frappe.db.count(
+				"LMS Assignment Submission",
+				{"assignment": self.assignment, "member": self.member, "name": ["!=", self.name]}
+			)
 
 			if attempts_made >= attempts_allowed:
 				frappe.throw(f"No attempts remaining for this assignment. ({attempts_made}/{attempts_allowed} used)")
@@ -130,11 +136,7 @@ class LMSAssignmentSubmission(Document):
 Percentage: {percentage:.2f}%
 Final Score: {final_score:.2f}/{test_score_value}"""
 
-			# INCREMENT attempts_made instead of decrementing attempts_allowed
-			new_attempts_made = attempts_made + 1
-			frappe.db.set_value("LMS Assignment", self.assignment, "attempts_made", new_attempts_made)
-			frappe.db.commit()
-
+			# NO NEED TO INCREMENT attempts_made - WE COUNT SUBMISSIONS DYNAMICALLY
 			self.save(ignore_permissions=True)
 
 		except Exception as e:
@@ -198,20 +200,6 @@ def upload_assignment(
 	}
 
 @frappe.whitelist()
-def get_assignment(lesson):
-	assignment = frappe.db.get_value(
-		"LMS Assignment Submission",
-		{"lesson": lesson, "member": frappe.session.user},
-		["name", "lesson", "member", "assignment_attachment", "comments", "status"],
-		as_dict=True,
-	)
-	assignment.file_name = frappe.db.get_value(
-		"File", {"file_url": assignment.assignment_attachment}, "file_name"
-	)
-	return assignment
-
-
-@frappe.whitelist()
 def grade_assignment(name, result, comments, score, totalScore, file):
 	doc = frappe.get_doc("LMS Assignment Submission", name)
 	doc.status = result
@@ -242,19 +230,18 @@ def submit_quiz(assignment, answers):
 		if assignment_doc.type != "Quiz/Multiple choice":
 			frappe.throw(_("Assignment is not a quiz."))
 
-		# Get attempts tracking
+		# Get attempts tracking - COUNT PER STUDENT
 		attempts_allowed = assignment_doc.get("attempts_allowed", 1)
-		attempts_made = assignment_doc.get("attempts_made", 0)
+
+		# Count existing submissions for THIS USER for THIS ASSIGNMENT
+		attempts_made = frappe.db.count(
+			"LMS Assignment Submission",
+			{"assignment": assignment, "member": frappe.session.user}
+		)
 
 		# Check if user has exceeded attempts
 		if attempts_made >= attempts_allowed:
 			frappe.throw(_(f"You have used all your attempts for this assignment. ({attempts_made}/{attempts_allowed} used)"))
-
-		# Count existing submissions for this user
-		submission_count = frappe.db.count(
-			"LMS Assignment Submission",
-			{"assignment": assignment, "member": frappe.session.user}
-		)
 
 		# Create submission doc
 		submission = frappe.get_doc(
@@ -279,11 +266,11 @@ def submit_quiz(assignment, answers):
 
 		submission.insert(ignore_permissions=True)
 
-		# Now run auto-grading (this will increment attempts_made)
+		# Now run auto-grading
 		submission.auto_grade_quiz()
 
-		# Update Assignment status to Submitted (only on first submission)
-		if submission_count == 0:
+		# Update Assignment status to Submitted (only on first submission by this user)
+		if attempts_made == 0:
 			frappe.db.set_value("LMS Assignment", assignment, {
 				"status": "Submitted",
 				"submitted": 1
@@ -294,8 +281,11 @@ def submit_quiz(assignment, answers):
 		# Reload submission to get updated values
 		submission.reload()
 
-		# Get updated attempts from database
-		updated_attempts_made = frappe.db.get_value("LMS Assignment", assignment, "attempts_made")
+		# Recalculate attempts after this submission (now includes this new one)
+		updated_attempts_made = frappe.db.count(
+			"LMS Assignment Submission",
+			{"assignment": assignment, "member": frappe.session.user}
+		)
 		attempts_remaining = attempts_allowed - updated_attempts_made
 
 		# Prepare response with detailed answers
@@ -329,6 +319,9 @@ def submit_quiz(assignment, answers):
 
 @frappe.whitelist()
 def get_student_submitted_assignments(student):
+	"""
+	Get all assignments submitted by a student with enriched user details and quiz answers.
+	"""
 	students_link = frappe.get_all(
 		"PL Students",
 		filters={"students": student},
@@ -346,22 +339,118 @@ def get_student_submitted_assignments(student):
 		order_by="creation desc",
 	)
 
-	return {"success": True, "data": submitted_assignments}
+	# Enrich submissions with user details and quiz answers
+	enriched_submissions = []
+	for submission in submitted_assignments:
+		# Get member (student) details
+		member_details = {}
+		if submission.get("member"):
+			member_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("member")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if member_user:
+				member_details = {
+					"full_name": member_user[0].get("full_name", ""),
+					"email": member_user[0].get("email", ""),
+					"user_image": member_user[0].get("user_image", "")
+				}
 
+		# Get owner (instructor) details from submission
+		owner_details = None
+		if submission.get("owner"):
+			owner_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("owner")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if owner_user:
+				owner_details = {
+					"full_name": owner_user[0].get("full_name", ""),
+					"email": owner_user[0].get("email", ""),
+					"user_image": owner_user[0].get("user_image", "")
+				}
 
-# get all the submissions for an assignment created by a tutor
+		# Get quiz answers for this submission if it's a quiz
+		quiz_answers = []
+		if submission.get("type") == "Quiz/Multiple choice":
+			quiz_answers = frappe.get_all(
+				"LMS Quiz Answer",
+				filters={"parent": submission.get("name")},
+				fields=[
+					"name",
+					"question",
+					"selected_option",
+					"is_correct",
+					"marks_awarded"
+				],
+				order_by="idx asc"
+			)
+
+		# Get assignment details
+		assignment_details = frappe.get_all(
+			"LMS Assignment",
+			filters={"name": submission.get("assignment")},
+			fields=["title", "type", "test_score", "attempts_allowed"],
+			limit=1
+		)
+		assignment_info = assignment_details[0] if assignment_details else {}
+
+		# COUNT ATTEMPTS FOR THIS SPECIFIC STUDENT
+		attempts_made = frappe.db.count(
+			"LMS Assignment Submission",
+			{"assignment": submission.get("assignment"), "member": student}
+		)
+
+		# Build enriched submission object
+		enriched_submission = {
+			"id": submission.get("name"),
+			"assignment_id": submission.get("assignment"),
+			"assignment_title": submission.get("assignment_title", ""),
+			"assignment_type": submission.get("type", ""),
+			"member": member_details,  # ← Student details
+			"owner": owner_details,  # ← Instructor/Creator details
+			"status": submission.get("status", ""),
+			"score": submission.get("score"),
+			"total_score": submission.get("total_score"),
+			"percentage": round((submission.get("score", 0) / submission.get("total_score", 100) * 100), 2) if submission.get("total_score") else 0,
+			"comments": submission.get("comments", ""),
+			"question": submission.get("question", ""),
+			"answer": submission.get("answer", ""),
+			"assignment_attachment": submission.get("assignment_attachment", ""),
+			"file": submission.get("file", ""),
+			"created_at": submission.get("creation"),
+			"modified_at": submission.get("modified"),
+			"quiz_answers": quiz_answers,
+			"attempts_made": attempts_made,  # ← PER STUDENT
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+		}
+
+		enriched_submissions.append(enriched_submission)
+
+	return {"success": True, "data": enriched_submissions}
+
 @frappe.whitelist()
 def get_all_assignment_submissions(tutor):
+	"""
+	Get all submissions for assignments created by a tutor with enriched user details.
+	"""
 	assignments = frappe.get_all(
 		"LMS Assignment",
 		filters={"owner": tutor},
-		fields=["name", "title"],
+		fields=["name", "title", "type", "test_score", "attempts_allowed"],
 	)
 
 	if not assignments:
 		return {"success": True, "data": []}
 
 	assignment_ids = [a.name for a in assignments]
+
+	# Create a lookup dict for assignment info
+	assignment_lookup = {a.name: a for a in assignments}
 
 	submissions = frappe.get_all(
 		"LMS Assignment Submission",
@@ -370,4 +459,179 @@ def get_all_assignment_submissions(tutor):
 		order_by="creation desc",
 	)
 
-	return {"success": True, "data": submissions}
+	# Enrich submissions with user details and quiz answers
+	enriched_submissions = []
+	for submission in submissions:
+		# Get member (student) details
+		member_details = {}
+		if submission.get("member"):
+			member_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("member")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if member_user:
+				member_details = {
+					"full_name": member_user[0].get("full_name", ""),
+					"email": member_user[0].get("email", ""),
+					"user_image": member_user[0].get("user_image", "")
+				}
+
+		# Get owner (instructor/tutor) details
+		owner_details = {}
+		if submission.get("owner"):
+			owner_user = frappe.get_all(
+				"User",
+				filters={"name": submission.get("owner")},
+				fields=["full_name", "email", "user_image"],
+				limit=1
+			)
+			if owner_user:
+				owner_details = {
+					"full_name": owner_user[0].get("full_name", ""),
+					"email": owner_user[0].get("email", ""),
+					"user_image": owner_user[0].get("user_image", "")
+				}
+
+		# Get quiz answers for this submission if it's a quiz
+		quiz_answers = []
+		if submission.get("type") == "Quiz/Multiple choice":
+			quiz_answers = frappe.get_all(
+				"LMS Quiz Answer",
+				filters={"parent": submission.get("name")},
+				fields=[
+					"name",
+					"question",
+					"selected_option",
+					"is_correct",
+					"marks_awarded"
+				],
+				order_by="idx asc"
+			)
+
+		# Get assignment info from lookup
+		assignment_info = assignment_lookup.get(submission.get("assignment"), {})
+
+		# COUNT ATTEMPTS FOR THIS SPECIFIC STUDENT AND ASSIGNMENT
+		attempts_made = frappe.db.count(
+			"LMS Assignment Submission",
+			{"assignment": submission.get("assignment"), "member": submission.get("member")}
+		)
+
+		# Build enriched submission object
+		enriched_submission = {
+			"id": submission.get("name"),
+			"assignment_id": submission.get("assignment"),
+			"assignment_title": submission.get("assignment_title", ""),
+			"assignment_type": submission.get("type", ""),
+			"member": member_details,  # ← Student details
+			"owner": owner_details,  # ← Instructor/Creator details
+			"status": submission.get("status", ""),
+			"score": submission.get("score"),
+			"total_score": submission.get("total_score"),
+			"percentage": round((submission.get("score", 0) / submission.get("total_score", 100) * 100), 2) if submission.get("total_score") else 0,
+			"comments": submission.get("comments", ""),
+			"question": submission.get("question", ""),
+			"answer": submission.get("answer", ""),
+			"assignment_attachment": submission.get("assignment_attachment", ""),
+			"file": submission.get("file", ""),
+			"created_at": submission.get("creation"),
+			"modified_at": submission.get("modified"),
+			"quiz_answers": quiz_answers,
+			"attempts_made": attempts_made,  # ← PER STUDENT
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+		}
+
+		enriched_submissions.append(enriched_submission)
+
+	return {"success": True, "data": enriched_submissions}
+
+@frappe.whitelist()
+def get_assignment_submission_details(submission_id):
+	"""
+	Get detailed information about a specific assignment submission including selected answers.
+	"""
+	try:
+		# Check if submission exists
+		if not frappe.db.exists("LMS Assignment Submission", submission_id):
+			return {
+				"success": False,
+				"message": "Submission not found",
+				"data": None
+			}
+
+		# Get submission details
+		submission = frappe.get_doc("LMS Assignment Submission", submission_id)
+
+		# Get assignment details
+		assignment = frappe.get_doc("LMS Assignment", submission.assignment)
+
+		# Get quiz answers with full details
+		quiz_answers = []
+		for ans in submission.quiz_answers:
+			# Get the quiz question details from assignment
+			quiz_question = None
+			for q in assignment.quiz_questions:
+				if q.name == ans.question:
+					quiz_question = q
+					break
+
+			# Get LMS Question details if available
+			question_text = ""
+			if quiz_question and quiz_question.question:
+				lms_question = frappe.get_doc("LMS Question", quiz_question.question)
+				question_text = lms_question.question
+
+			quiz_answers.append({
+				"question_id": ans.question,
+				"question_text": question_text or (quiz_question.question if quiz_question else ""),
+				"selected_option": ans.selected_option,
+				"correct_answer": quiz_question.correct_answer if quiz_question else None,
+				"is_correct": ans.get("is_correct", 0),
+				"marks_awarded": ans.get("marks_awarded", 0),
+				"marks_possible": quiz_question.marks if quiz_question else 0,
+				"option_a": quiz_question.option_a if quiz_question else "",
+				"option_b": quiz_question.option_b if quiz_question else "",
+				"option_c": quiz_question.option_c if quiz_question else "",
+				"option_d": quiz_question.option_d if quiz_question else "",
+				"explanation": quiz_question.explanation if quiz_question else ""
+			})
+
+		# COUNT ATTEMPTS FOR THIS SPECIFIC STUDENT
+		attempts_made = frappe.db.count(
+			"LMS Assignment Submission",
+			{"assignment": submission.assignment, "member": submission.member}
+		)
+
+		# Build response
+		response_data = {
+			"submission_id": submission.name,
+			"assignment_id": submission.assignment,
+			"assignment_title": assignment.title,
+			"assignment_type": assignment.type,
+			"member": submission.member,
+			"status": submission.status,
+			"score": submission.score,
+			"total_score": submission.total_score,
+			"percentage": round((submission.score / submission.total_score * 100), 2) if submission.total_score else 0,
+			"comments": submission.comments,
+			"created_at": submission.creation,
+			"modified_at": submission.modified,
+			"quiz_answers": quiz_answers,
+			"attempts_made": attempts_made,  # ← PER STUDENT
+			"attempts_allowed": assignment.get("attempts_allowed", 1)
+		}
+
+		return {
+			"success": True,
+			"data": response_data
+		}
+
+	except Exception as e:
+		frappe.log_error(f"Error in get_assignment_submission_details: {str(e)}")
+		return {
+			"success": False,
+			"message": f"Error fetching submission details: {str(e)}",
+			"data": None
+		}

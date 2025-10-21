@@ -66,6 +66,8 @@ def create_assignment():
         assignment_doc.submitted = 0 # 1 if data.get("drafted", False) == 0 else 0
         assignment_doc.drafted = data.get("drafted", False)
         assignment_doc.public = data.get("public", 0)
+        assignment_doc.attempts_allowed = data.get("attempts_allowed", 1)
+        assignment_doc.duration = data.get("duration", 0)
 
         # === Add Recipients ===
         recipients_created = []
@@ -114,6 +116,7 @@ def create_assignment():
                     lms_question_doc.question = question_data.get("question", "")
                     lms_question_doc.type = "Choices"  # Must be "Choices" for multiple choice
                     lms_question_doc.multiple = 0  # Single correct answer
+                    lms_question_doc.selected_answer = question_data.get("selected_answer","")
 
                     # Set options using the correct field names
                     lms_question_doc.option_1 = question_data.get("option_a", "")
@@ -171,6 +174,7 @@ def create_assignment():
                         "marks": int(question_data.get("marks", 1)),
                         "points": int(question_data.get("points", 1)),
                         "explanation": question_data.get("explanation", ""),
+                        "selected_answer": question_data.get("selected_answer",""),
                     }
 
                     assignment_doc.append("quiz_questions", quiz_question_row)
@@ -217,6 +221,8 @@ def create_assignment():
                 "status": assignment_doc.status,
                 "drafted": bool(assignment_doc.drafted),
                 "public": bool(assignment_doc.public),
+                "duration": str(assignment_doc.duration) if assignment_doc.duration else None,
+                "attempts_allowed": assignment_doc.attempts_allowed
             },
         }
 
@@ -304,6 +310,10 @@ def update_assignment():
             assignment_doc.drafted = 1 if data.get("drafted") == 1 else 0
         if "public" in data:
             assignment_doc.public = 1 if data.get("drafted") == 0 else 0
+        if "duration" in data:
+            assignment_doc.duration = data.get("duration", 0)
+        if "attempts_allowed" in data:
+            assignment_doc.attempts_allowed = data.get("attempts_allowed", 1)
 
         # === Update Recipients ===
         recipients_updated = []
@@ -680,6 +690,9 @@ def get_assignment():
                 "submitted": assignment_doc.submitted,
                 "drafted": assignment_doc.drafted,
                 "public": assignment_doc.public,
+                "duration": assignment_doc.duration,
+                "attempts_allowed": assignment_doc.attempts_allowed,
+                "attempts_made":assignment_doc.attempts_made,
                 "recipient": recipients,
                 "quiz_questions": quiz_questions
             }
@@ -1012,6 +1025,8 @@ def get_all_student_assignment(user, limit=None, **kwargs):
                 "late_submission": a.get("late_submission"),
                 "set_reminders": a.get("set_reminders"),
                 "attempts_allowed": a.get("attempts_allowed"),
+                "attempts_made": a.get("attempts_made"),
+                "duration": a.get("duration"),
                 "lms_questions": lms_questions,
                 "quiz_questions": [
     {
@@ -1026,7 +1041,6 @@ def get_all_student_assignment(user, limit=None, **kwargs):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
-        "duration": q.get("duration"),
         "selected_answer": q.get("selected_answer")
     }
     for q in quiz_questions
@@ -1183,6 +1197,8 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
             "late_submission": a.get("late_submission"),
             "set_reminders": a.get("set_reminders"),
             "attempts_allowed": a.get("attempts_allowed"),
+            "attempts_made": a.get("attempts_made"),
+            "duration": a.get("duration"),
             "recipients": recipients,
             "lms_questions": lms_questions,
             "quiz_questions": [
@@ -1198,8 +1214,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
-        "duration": q.get("duration"),
-		"selected_answer": q.get("selected_answer"),
+        "selected_answer": q.get("selected_answer"),
     }
     for q in quiz_questions
 ],
@@ -1222,7 +1237,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
                 "full_name": instructor_user.full_name,
                 "email": user,
                 "bio": user_profile[0].get("bio") if user_profile else "",
-                "profile_image": user_profile[0].get("profile_image") if user_profile else "",
+                "profile_image": user_profile[0].get("user_image") if user_profile else "",
             },
         })
 
@@ -1273,7 +1288,6 @@ def get_assignment_details(assignment):
             "option_d",
             "correct_answer",
             "explanation",
-            "duration",
             "selected_answer"
         ],
     )
@@ -1346,6 +1360,8 @@ def get_assignment_details(assignment):
         "late_submission": a.get("late_submission"),
         "set_reminders": a.get("set_reminders"),
         "attempts_allowed": a.get("attempts_allowed"),
+        "duration": a.get("duration"),
+        "attempts_made": a.get("attempts_made"),
         # include lms_questions (matches get_all_student_assignment)
         "lms_questions": lms_questions,
         "quiz_questions": [
@@ -1361,7 +1377,6 @@ def get_assignment_details(assignment):
         "option_d": q.get("option_d"),
         "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
-        "duration": q.get("duration"),
         "selected_answer": q.get("selected_answer"),
     }
     for q in quiz_questions
@@ -1385,7 +1400,7 @@ def get_assignment_details(assignment):
             "full_name": instructor_user.full_name,
             "email": user_profile[0].get("user") if user_profile else a.get("owner"),
             "bio": user_profile[0].get("bio") if user_profile else "",
-            "profile_image": user_profile[0].get("profile_image") if user_profile else "",
+            "profile_image": user_profile[0].get("user_image") if user_profile else "",
         },
     }
 
