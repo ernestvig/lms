@@ -619,7 +619,9 @@ def get_assignment_submission_details(submission_id):
 			"created_at": submission.creation,
 			"modified_at": submission.modified,
 			"quiz_answers": quiz_answers,
-			"attempts_made": attempts_made,  # ← PER STUDENT
+			"assignment_file": assignment.file,
+			"attempts_made": attempts_made,
+			"assignment_attachment": submission.assignment_attachment,
 			"attempts_allowed": assignment.get("attempts_allowed", 1)
 		}
 
