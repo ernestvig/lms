@@ -161,44 +161,87 @@ def upload_assignment(
 	)
 	assignment_type = assignment_details.type
 
+	# Validation
 	if assignment_type in ["Essay/Written task", "Practical task"] and not answer:
 		frappe.throw(_("Please enter the URL for assignment submission."))
-
 	if assignment_type == "Video submission" and not assignment_attachment:
 		frappe.throw(_("Please upload the assignment file."))
-
 	if assignment_type == "URL" and not validate_url(answer):
 		frappe.throw(_("Please enter a valid URL."))
 
-	if submission:
-		doc = frappe.get_doc("LMS Assignment Submission", submission)
-	else:
-		doc = frappe.get_doc(
-			{
-				"doctype": "LMS Assignment Submission",
-				"assignment": assignment,
-				"lesson": lesson,
-				"member": frappe.session.user,
-				"type": assignment_type,
-			}
-		)
+	assignment_doc = frappe.get_doc("LMS Assignment", assignment)
+	attempts_allowed = assignment_doc.get("attempts_allowed", 1)
 
-	doc.update(
-		{
-			"assignment_attachment": assignment_attachment,
-			"status": "Not Applicable"
-			if assignment_type == "Text" and not assignment_details.grade_assignment
-			else status,
-			"comments": comments,
-			"answer": answer,
-		}
+	# Count existing submissions for THIS USER for THIS ASSIGNMENT
+	existing_attempts = frappe.db.count(
+		"LMS Assignment Submission",
+		{"assignment": assignment, "member": frappe.session.user}
 	)
-	doc.save(ignore_permissions=True)
-	return {
-		"message": "Assignment submitted successfully.",
-		"submission": doc.name,
-	}
 
+	# For NEW submissions only, check if attempts exceeded
+	if not submission:
+		if existing_attempts >= attempts_allowed:
+			frappe.throw(_(
+				f"You have used all your attempts for this assignment. "
+				f"({existing_attempts}/{attempts_allowed} used)"
+			))
+
+		# Create new submission
+		doc = frappe.get_doc({
+			"doctype": "LMS Assignment Submission",
+			"assignment": assignment,
+			"lesson": lesson,
+			"member": frappe.session.user,
+			"type": assignment_type,
+			"assignment_attachment": assignment_attachment,
+			"answer": answer,
+			"comments": comments,
+			"status": "Not Applicable"
+				if assignment_type == "Text" and not assignment_details.grade_assignment
+				else status,
+		})
+		doc.save(ignore_permissions=True)
+
+		# Update Assignment Status to Submitted (on first submission)
+		if existing_attempts == 0:
+			frappe.db.set_value("LMS Assignment", assignment, {
+				"status": "Submitted",
+				"submitted": 1
+			})
+
+		# Calculate remaining attempts after this new submission
+		attempts_remaining = attempts_allowed - (existing_attempts + 1)
+
+	else:
+		# Update existing submission
+		doc = frappe.get_doc("LMS Assignment Submission", submission)
+
+		# Only update fields that are provided, preserve status if already graded
+		if assignment_attachment:
+			doc.assignment_attachment = assignment_attachment
+		if answer:
+			doc.answer = answer
+		if comments:
+			doc.comments = comments
+
+		# Only update status if not already graded
+		if doc.status not in ["Pass", "Fail", "Graded"]:
+			doc.status = "Not Applicable" \
+				if assignment_type == "Text" and not assignment_details.grade_assignment \
+				else status
+
+		doc.save(ignore_permissions=True)
+
+		# Attempts remain the same for updates
+		attempts_remaining = attempts_allowed - existing_attempts
+
+	return {
+		"message": "Assignment submitted successfully." if not submission else "Assignment updated successfully.",
+		"submission": doc.name,
+		"attempts_remaining": attempts_remaining,
+		"attempts_made": existing_attempts + (0 if submission else 1),
+		"attempts_allowed": attempts_allowed,
+	}
 @frappe.whitelist()
 def grade_assignment(name, result, comments, score, totalScore, file):
 	doc = frappe.get_doc("LMS Assignment Submission", name)
