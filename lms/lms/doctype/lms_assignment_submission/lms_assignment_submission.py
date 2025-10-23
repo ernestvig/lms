@@ -654,6 +654,7 @@ def get_assignment_submission_details(submission_id):
 			"assignment_title": assignment.title,
 			"assignment_type": assignment.type,
 			"member": submission.member,
+			"member_name": submission.member_name,
 			"status": submission.status,
 			"score": submission.score,
 			"total_score": submission.total_score,
@@ -665,7 +666,14 @@ def get_assignment_submission_details(submission_id):
 			"assignment_file": assignment.file,
 			"attempts_made": attempts_made,
 			"assignment_attachment": submission.assignment_attachment,
-			"attempts_allowed": assignment.get("attempts_allowed", 1)
+			"attempts_allowed": assignment.get("attempts_allowed", 1),
+			"duration": assignment.get("duration", 0),
+			"subject": (
+			{
+				"id": assignment.subject,
+				"subject_name": frappe.db.get_value("Subject", assignment.subject, "subject_name")
+			} if assignment.subject else None
+)
 		}
 
 		return {
