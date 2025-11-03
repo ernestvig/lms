@@ -6,6 +6,8 @@ from frappe import _
 from frappe.desk.doctype.notification_log.notification_log import make_notification_logs
 from frappe.model.document import Document
 from frappe.utils import validate_url
+from frappe.utils import get_datetime, now_datetime
+
 
 
 class LMSAssignmentSubmission(Document):
@@ -143,6 +145,7 @@ Final Score: {final_score:.2f}/{test_score_value}"""
 			frappe.log_error(title="Auto Grade Quiz Error", message=frappe.get_traceback())
 			raise
 
+
 @frappe.whitelist()
 def upload_assignment(
 	assignment_attachment=None,
@@ -170,6 +173,13 @@ def upload_assignment(
 		frappe.throw(_("Please enter a valid URL."))
 
 	assignment_doc = frappe.get_doc("LMS Assignment", assignment)
+
+	# Check due date: disallow submissions past due_date
+	due_date = assignment_doc.get("due_date")
+	if due_date:
+		if now_datetime() > get_datetime(due_date):
+			frappe.throw(_("Assignment due date has passed. You cannot submit this assignment."))
+
 	attempts_allowed = assignment_doc.get("attempts_allowed", 1)
 
 	# Count existing submissions for THIS USER for THIS ASSIGNMENT
@@ -242,17 +252,18 @@ def upload_assignment(
 		"attempts_made": existing_attempts + (0 if submission else 1),
 		"attempts_allowed": attempts_allowed,
 	}
+
 @frappe.whitelist()
-def grade_assignment(name, result, comments, score, totalScore, file):
+def grade_assignment(name, result, comments, score, totalScore, file,correction_file):
 	doc = frappe.get_doc("LMS Assignment Submission", name)
 	doc.status = result
 	doc.comments = comments
 	doc.score = score
 	doc.total_score = totalScore
 	doc.file = file
+	doc.correction_file = correction_file
 	doc.save(ignore_permissions=True)
 	return {"message": "Assignment graded successfully."}
-
 
 @frappe.whitelist()
 def submit_quiz(assignment, answers):
@@ -272,6 +283,12 @@ def submit_quiz(assignment, answers):
 
 		if assignment_doc.type != "Quiz/Multiple choice":
 			frappe.throw(_("Assignment is not a quiz."))
+
+		# Check due date: disallow submissions past due_date
+		due_date = assignment_doc.get("due_date")
+		if due_date:
+			if now_datetime() > get_datetime(due_date):
+				frappe.throw(_("Assignment due date has passed. You cannot submit this quiz."))
 
 		# Get attempts tracking - COUNT PER STUDENT
 		attempts_allowed = assignment_doc.get("attempts_allowed", 1)

@@ -10,6 +10,22 @@ from lms.lms.utils import has_course_instructor_role, has_course_moderator_role
 class LMSAssignment(Document):
     pass
 
+def mark_overdue_on_save(doc, method):
+    """Doc event: set status to 'Overdue' if due_date is in the past.
+
+    Intended to be wired in hooks.py as a doc_event for the LMS Assignment doctype
+    (e.g. "validate" or "on_update").
+    """
+    try:
+        if getattr(doc, "due_date", None):
+            from frappe.utils import get_datetime, now_datetime
+            # compare as datetimes to handle both date and datetime fields
+            if get_datetime(doc.due_date) < now_datetime():
+                # don't override graded/submitted statuses if that's undesired; adjust as needed
+                if doc.status not in ("Overdue", "Graded"):
+                    doc.status = "Overdue"
+    except Exception as e:
+        frappe.log_error(f"mark_overdue_on_save: {e}", "Assignment Hook Error")
 
 @frappe.whitelist()
 def create_assignment():
@@ -609,7 +625,6 @@ def update_assignment():
             "traceback": frappe.get_traceback()
         }
 
-
 @frappe.whitelist()
 def get_assignment():
     """
@@ -897,7 +912,6 @@ def submit_assignment_response():
         frappe.log_error(frappe.get_traceback(), "Assignment Submission Failed")
         return {"error": str(e)}
 
-
 @frappe.whitelist()
 def save_assignment(assignment, title, type, question):
     if not has_course_moderator_role() or not has_course_instructor_role():
@@ -1169,6 +1183,40 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
             as_dict=True,
         )
 
+
+        recipients_list = []
+        for r in recipients:
+            student_email = r.get("student")
+            user_doc = None
+            profile = None
+
+            try:
+                if frappe.db.exists("User", student_email):
+                    user_doc = frappe.get_doc("User", student_email)
+            except Exception:
+                user_doc = None
+
+            try:
+                ups = frappe.get_all(
+                    "User Profile",
+                    filters={"user": student_email},
+                    fields=["bio", "user_image", "user_image"]
+                )
+                profile = ups[0] if ups else None
+            except Exception:
+                profile = None
+
+            profile_image = ""
+            if profile:
+                profile_image = profile.get("user_image") or profile.get("user_image") or ""
+
+            recipients_list.append({
+                "full_name": user_doc.full_name if user_doc and getattr(user_doc, "full_name", None) else student_email,
+                "email": student_email,
+                "profile_image": profile_image,
+                "bio": profile.get("bio") if profile else ""
+            })
+
         # Instructor profile (if exists)
         user_profile = frappe.get_all(
             "User Profile",
@@ -1199,7 +1247,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
             "attempts_allowed": a.get("attempts_allowed"),
             "attempts_made": a.get("attempts_made"),
             "duration": a.get("duration"),
-            "recipients": recipients,
+            "recipients": recipients_list,
             "lms_questions": lms_questions,
             "quiz_questions": [
     {
@@ -1329,6 +1377,39 @@ def get_assignment_details(assignment):
         as_dict=True,
     )
 
+    recipients_list = []
+    for r in recipients:
+            student_email = r.get("student")
+            user_doc = None
+            profile = None
+
+            try:
+                if frappe.db.exists("User", student_email):
+                    user_doc = frappe.get_doc("User", student_email)
+            except Exception:
+                user_doc = None
+
+            try:
+                ups = frappe.get_all(
+                    "User Profile",
+                    filters={"user": student_email},
+                    fields=["bio", "user_image", "user_image"]
+                )
+                profile = ups[0] if ups else None
+            except Exception:
+                profile = None
+
+            profile_image = ""
+            if profile:
+                profile_image = profile.get("user_image") or profile.get("user_image") or ""
+
+            recipients_list.append({
+                "full_name": user_doc.full_name if user_doc and getattr(user_doc, "full_name", None) else student_email,
+                "email": student_email,
+                "profile_image": profile_image,
+                "bio": profile.get("bio") if profile else ""
+            })
+
     # Instructor profile (if exists)
     user_profile = frappe.get_all(
         "User Profile",
@@ -1356,7 +1437,7 @@ def get_assignment_details(assignment):
         "grade_assignment": a.get("grade_assignment"),
         "is_public": a.get("public"),
         "status": a.get("status"),
-        "recipients": recipients,
+        "recipients": recipients_list,
         "late_submission": a.get("late_submission"),
         "set_reminders": a.get("set_reminders"),
         "attempts_allowed": a.get("attempts_allowed"),
@@ -1410,7 +1491,6 @@ def get_assignment_details(assignment):
         "data": result,
         "count": 1,
     }
-
 
 @frappe.whitelist()
 def get_overdue_assignments(student):
@@ -1565,3 +1645,35 @@ def get_overdue_assignments(student):
         "data": result,
         "count": len(result),
     }
+
+@frappe.whitelist()
+def mark_overdue_assignments():
+    """Scheduled job: mark all LMS Assignment records whose due_date has passed as Overdue."""
+    try:
+        from frappe.utils import nowdate
+
+        today = nowdate()
+
+        # fetch assignments with due_date before today and not already Overdue/Graded
+        assignments = frappe.get_all(
+            "LMS Assignment",
+            filters=[
+                ["due_date", "<", today],
+                ["status", "not in", ["Overdue", "Graded"]]
+            ],
+            fields=["name"],
+        )
+
+        updated = 0
+        for a in assignments:
+            try:
+                frappe.db.set_value("LMS Assignment", a.name, "status", "Overdue", update_modified=False)
+                updated += 1
+            except Exception as inner_e:
+                frappe.log_error(f"Failed to mark {a.name} Overdue: {inner_e}", "Mark Overdue Error")
+
+        frappe.db.commit()
+        return {"updated": updated}
+    except Exception as e:
+        frappe.log_error(f"mark_overdue_assignments: {e}", "Mark Overdue Scheduler Error")
+        return {"updated": 0, "error": str(e)}
