@@ -454,7 +454,7 @@ def get_student_submitted_assignments(student):
 		assignment_details = frappe.get_all(
 			"LMS Assignment",
 			filters={"name": submission.get("assignment")},
-			fields=["title", "type", "test_score", "attempts_allowed"],
+			fields=["title", "type", "test_score", "attempts_allowed","instructions","resource_link"],
 			limit=1
 		)
 		assignment_info = assignment_details[0] if assignment_details else {}
@@ -485,8 +485,10 @@ def get_student_submitted_assignments(student):
 			"created_at": submission.get("creation"),
 			"modified_at": submission.get("modified"),
 			"quiz_answers": quiz_answers,
-			"attempts_made": attempts_made,  # ← PER STUDENT
-			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+			"attempts_made": attempts_made,
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1),
+			"assignment_instructions" : assignment_info.get("instructions", ""),
+			"resource_link": assignment_info.get("resource_link", "")
 		}
 
 		enriched_submissions.append(enriched_submission)
@@ -599,8 +601,10 @@ def get_all_assignment_submissions(tutor):
 			"created_at": submission.get("creation"),
 			"modified_at": submission.get("modified"),
 			"quiz_answers": quiz_answers,
-			"attempts_made": attempts_made,  # ← PER STUDENT
-			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+			"attempts_made": attempts_made,
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1),
+			"assignment_instructions" : assignment_info.get("instructions", ""),
+			"resource_link": assignment_info.get("resource_link", "")
 		}
 
 		enriched_submissions.append(enriched_submission)
