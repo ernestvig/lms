@@ -254,14 +254,13 @@ def upload_assignment(
 	}
 
 @frappe.whitelist()
-def grade_assignment(name, result, comments, score, totalScore, file,correction_file):
+def grade_assignment(name, result, comments, score, totalScore, file):
 	doc = frappe.get_doc("LMS Assignment Submission", name)
 	doc.status = result
 	doc.comments = comments
 	doc.score = score
 	doc.total_score = totalScore
 	doc.file = file
-	doc.correction_file = correction_file
 	doc.save(ignore_permissions=True)
 	return {"message": "Assignment graded successfully."}
 
@@ -454,7 +453,7 @@ def get_student_submitted_assignments(student):
 		assignment_details = frappe.get_all(
 			"LMS Assignment",
 			filters={"name": submission.get("assignment")},
-			fields=["title", "type", "test_score", "attempts_allowed"],
+			fields=["title", "type", "test_score", "attempts_allowed","instructions","resource_link"],
 			limit=1
 		)
 		assignment_info = assignment_details[0] if assignment_details else {}
@@ -471,8 +470,8 @@ def get_student_submitted_assignments(student):
 			"assignment_id": submission.get("assignment"),
 			"assignment_title": submission.get("assignment_title", ""),
 			"assignment_type": submission.get("type", ""),
-			"member": member_details,  # ← Student details
-			"owner": owner_details,  # ← Instructor/Creator details
+			"member": member_details,
+			"owner": owner_details,
 			"status": submission.get("status", ""),
 			"score": submission.get("score"),
 			"total_score": submission.get("total_score"),
@@ -480,13 +479,16 @@ def get_student_submitted_assignments(student):
 			"comments": submission.get("comments", ""),
 			"question": submission.get("question", ""),
 			"answer": submission.get("answer", ""),
-			"assignment_attachment": submission.get("assignment_attachment", ""),
-			"file": submission.get("file", ""),
+			"submission_attachment": submission.get("assignment_attachment", ""),
+			"assignment_file": assignment_info.get("file", ""),
 			"created_at": submission.get("creation"),
 			"modified_at": submission.get("modified"),
 			"quiz_answers": quiz_answers,
-			"attempts_made": attempts_made,  # ← PER STUDENT
-			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+			"attempts_made": attempts_made,
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1),
+			"assignment_instructions" : assignment_info.get("instructions", ""),
+			"resource_link": assignment_info.get("resource_link", ""),
+			"correction_file": submission.get("file", ""),
 		}
 
 		enriched_submissions.append(enriched_submission)
@@ -599,8 +601,10 @@ def get_all_assignment_submissions(tutor):
 			"created_at": submission.get("creation"),
 			"modified_at": submission.get("modified"),
 			"quiz_answers": quiz_answers,
-			"attempts_made": attempts_made,  # ← PER STUDENT
-			"attempts_allowed": assignment_info.get("attempts_allowed", 1)
+			"attempts_made": attempts_made,
+			"attempts_allowed": assignment_info.get("attempts_allowed", 1),
+			"assignment_instructions" : assignment_info.get("instructions", ""),
+			"resource_link": assignment_info.get("resource_link", "")
 		}
 
 		enriched_submissions.append(enriched_submission)
