@@ -25,6 +25,7 @@
   "column_break_htgn",
   "image",
   "card_gradient",
+  "course_status",
   "section_break_7",
   "published",
   "published_on",
@@ -344,6 +345,13 @@
    "fieldname": "target_audience",
    "fieldtype": "Data",
    "label": "Target Audience"
+  },
+  {
+   "default": "Pending",
+   "fieldname": "course_status",
+   "fieldtype": "Select",
+   "label": "Course Status",
+   "options": "Pending\nCancelled\nApproved"
   }
  ],
  "is_published_field": "published",
@@ -362,7 +370,7 @@
   }
  ],
  "make_attachments_public": 1,
- "modified": "2025-10-10 11:42:41.045646",
+ "modified": "2025-11-04 11:11:26.382210",
  "modified_by": "Administrator",
  "module": "LMS",
  "name": "LMS Course",

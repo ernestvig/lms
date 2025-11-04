@@ -222,7 +222,7 @@ def reindex_exercises(doc):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None):
+def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None, course_status=None):
 	"""Get all courses for a given instructor using serialize_course structure"""
 
 	filters = {}
@@ -230,6 +230,9 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None)
 		filters["published"] = cint(published)
 	if is_draft is not None:
 		filters["draft"] = cint(is_draft)
+	if course_status is not None:
+		filters["course_status"] = cint(course_status)
+
 
 	limit = int(limit) if limit else 100
 
@@ -290,6 +293,7 @@ def get_all_courses(limit=None, search=None, **kwargs):
 	courses = [serialize_course(c["name"]) for c in course_names]
 
 	return {"success": True, "data": courses, "count": len(courses)}
+
 
 def serialize_course(course_name):
 	"""Return a structured course with profile, chapters, and lessons"""
@@ -479,7 +483,7 @@ def serialize_course(course_name):
 			{
 				"id": chapter.name,
 				"title": chapter.title,
-				"description": "",  # Set empty string since description field doesn't exist
+				"description": "",
 				"idx": chapter.idx,
 				"lessons": lessons_list,
 			}
@@ -511,6 +515,7 @@ def serialize_course(course_name):
 		"instructors": instructor_profiles,
 		"reviews": reviews_list,
 		"chapters": chapters_list,
+		"course_status": course.course_status,
 		"introductory_video": course.video,
 		"Doctype": "LMS Course",
 	}
@@ -2502,6 +2507,7 @@ def serialize_course_new(course_name):
 			"requirement": getattr(course, "requirement", ""),
 			"objectives": getattr(course, "objectives", ""),
 			"course_language": getattr(course, "course_language", ""),
+			"course_status": getattr(course, "course_status", ""),
 			"education_level": education_level,
 			"subject": subjects,
 			"paid_course": getattr(course, "paid_course", 0),
