@@ -74,12 +74,12 @@ def create_assignment():
         assignment_doc.resource_link = data.get("resource_link", "")
         assignment_doc.subject = data.get("subject", "")
         assignment_doc.test_score = data.get("test_score", "")
-        assignment_doc.status = "Pending" # "Submitted" if data.get("drafted", False) == 0 else "Pending"
+        assignment_doc.status = "Pending"
         assignment_doc.educational_level = data.get("educational_level", "")
         assignment_doc.due_date = data.get("due_date", "0000-00-00 00:00:00")
         assignment_doc.late_submission = 1 if data.get("late_submission", False) else 0
         assignment_doc.set_reminders = 1 if data.get("set_reminders", False) else 0
-        assignment_doc.submitted = 0 # 1 if data.get("drafted", False) == 0 else 0
+        assignment_doc.submitted = 0
         assignment_doc.drafted = data.get("drafted", False)
         assignment_doc.public = data.get("public", 0)
         assignment_doc.attempts_allowed = data.get("attempts_allowed", 1)
@@ -215,6 +215,24 @@ def create_assignment():
 
         # Insert the assignment with quiz questions
         assignment_doc.insert(ignore_permissions=True)
+
+        # === Create Student Status Records for Recipients ===
+        from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import create_student_status
+
+        student_statuses_created = []
+        for recipient_email in recipients_created:
+            try:
+                status_name = create_student_status(assignment_doc.name, recipient_email)
+                student_statuses_created.append({
+                    "student": recipient_email,
+                    "status_id": status_name
+                })
+            except Exception as e:
+                frappe.log_error(
+                    f"Failed to create student status for {recipient_email}: {str(e)}",
+                    "Student Status Creation Error"
+                )
+
         frappe.db.commit()
 
         return {
@@ -229,6 +247,7 @@ def create_assignment():
                 "recipients_failed_count": len(recipients_failed),
                 "lms_questions_count": len(lms_questions_created),
                 "quiz_questions_count": len(quiz_questions_created),
+                "student_statuses_created": len(student_statuses_created),
                 "grade_assignment": bool(assignment_doc.grade_assignment),
                 "show_answer": bool(assignment_doc.show_answer),
                 "recipients": recipients_created,
@@ -313,7 +332,7 @@ def update_assignment():
         if "test_score" in data:
             assignment_doc.test_score = data.get("test_score")
         if "status" in data:
-            assignment_doc.status = "Pending" # "Submitted" if data.get("drafted") == 0 else "Pending"
+            assignment_doc.status = "Pending"
         if "educational_level" in data:
             assignment_doc.educational_level = data.get("educational_level")
         if "late_submission" in data:
@@ -321,7 +340,7 @@ def update_assignment():
         if "set_reminders" in data:
             assignment_doc.set_reminders = 1 if data.get("set_reminders") else 0
         if "submitted" in data:
-            assignment_doc.submitted = 0 # 1 if data.get("drafted") == 0 else 0
+            assignment_doc.submitted = 0
         if "drafted" in data:
             assignment_doc.drafted = 1 if data.get("drafted") == 1 else 0
         if "public" in data:
@@ -332,6 +351,8 @@ def update_assignment():
             assignment_doc.attempts_allowed = data.get("attempts_allowed", 1)
 
         # === Update Recipients ===
+        from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import create_student_status
+
         recipients_updated = []
         recipients_added = []
         recipients_removed = []
@@ -344,10 +365,18 @@ def update_assignment():
 
             # Remove recipients not in the new list
             recipients_to_remove = current_recipients - new_recipients
-            for recipient_row in assignment_doc.recipient[:]:  # Use slice to avoid modification during iteration
+            for recipient_row in assignment_doc.recipient[:]:
                 if recipient_row.students in recipients_to_remove:
                     assignment_doc.remove(recipient_row)
                     recipients_removed.append(recipient_row.students)
+
+                    # Delete student status record
+                    status_record = frappe.db.exists(
+                        "LMS Assignment Student Status",
+                        {"assignment": assignment_doc.name, "student": recipient_row.students}
+                    )
+                    if status_record:
+                        frappe.delete_doc("LMS Assignment Student Status", status_record, ignore_permissions=True)
 
             # Add new recipients
             recipients_to_add = new_recipients - current_recipients
@@ -361,6 +390,10 @@ def update_assignment():
                 try:
                     assignment_doc.append("recipient", {"students": student_email})
                     recipients_added.append(student_email)
+
+                    # Create student status record for new recipient
+                    create_student_status(assignment_doc.name, student_email)
+
                 except Exception as e:
                     frappe.log_error(
                         f"Failed to add recipient {student_email}: {str(e)}",
@@ -497,7 +530,7 @@ def update_assignment():
                     # Add Quiz Question row
                     correct_answer = question_data.get("correct_answer", "A").upper()
                     quiz_question_row = {
-                        "question": lms_question_doc.name,  # Link to LMS Question
+                        "question": lms_question_doc.name,
                         "question_type": question_data.get("question_type", "Multiple Choice"),
                         "option_a": question_data.get("option_a", ""),
                         "option_b": question_data.get("option_b", ""),
@@ -527,7 +560,7 @@ def update_assignment():
                         "error": f"Failed to update/create quiz question: {str(e)}"
                     }
 
-            # === CRITICAL FIX: Save assignment FIRST to remove child table links ===
+            # Save assignment FIRST to remove child table links
             assignment_doc.save(ignore_permissions=True)
             frappe.db.commit()
 
@@ -928,31 +961,79 @@ def save_assignment(assignment, title, type, question):
 
 
 @frappe.whitelist()
-def get_all_student_assignment(user, limit=None, **kwargs):
+def get_all_student_assignment(user, limit=None, status_filter=None, **kwargs):
     """
     Fetch all assignments where a given student is in the recipient list.
-    """
+    Status is fetched from LMS Assignment Student Status table.
 
-    # Step 1: Find all LMS Assignment IDs linked to this student
-    student_links = frappe.get_all(
-        "PL Students",
-        filters={"students": user},
-        fields=["parent"],
+    Args:
+        status_filter: Optional filter - "Pending", "Overdue", "Submitted", "Pass", "Fail", "Graded"
+    """
+    from frappe.utils import get_datetime, now_datetime
+
+    # Step 1: Find all LMS Assignment IDs linked to this student via student status
+    student_status_records = frappe.get_all(
+        "LMS Assignment Student Status",
+        filters={"student": user},
+        fields=["assignment", "status", "submission", "last_viewed"]
     )
 
-    assignment_ids = [s.parent for s in student_links]
+    if not student_status_records:
+        # If no status records exist, create them for existing assignments
+        student_links = frappe.get_all(
+            "PL Students",
+            filters={"students": user},
+            fields=["parent"],
+        )
 
-    if not assignment_ids:
-        return {
-            "success": True,
-            "message": "No assignments found for this student",
-            "data": [],
-            "count": 0,
-        }
+        if student_links:
+            from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import create_student_status
+
+            for link in student_links:
+                # Create status record for each assignment
+                create_student_status(link.parent, user)
+
+            # Re-fetch after creating
+            student_status_records = frappe.get_all(
+                "LMS Assignment Student Status",
+                filters={"student": user},
+                fields=["assignment", "status", "submission", "last_viewed"]
+            )
+
+        if not student_status_records:
+            return {
+                "success": True,
+                "message": "No assignments found for this student",
+                "data": [],
+                "count": 0,
+            }
+
+    assignment_ids = [s.get("assignment") for s in student_status_records]
+
+    # Create a lookup for student status - FIXED: Use dict access
+    status_lookup = {s.get("assignment"): s for s in student_status_records}
 
     # Step 2: Fetch the assignments
     filters = {"name": ["in", assignment_ids]}
+
+    # Apply status filter if provided
+    if status_filter:
+        filtered_assignment_ids = [
+            s.get("assignment") for s in student_status_records
+            if (status_filter == "Graded" and s.get("status") in ["Pass", "Fail"]) or
+               (status_filter != "Graded" and s.get("status") == status_filter)
+        ]
+        if not filtered_assignment_ids:
+            return {
+                "success": True,
+                "message": f"No {status_filter} assignments found",
+                "data": [],
+                "count": 0,
+            }
+        filters["name"] = ["in", filtered_assignment_ids]
+
     filters.update(kwargs)
+
     user_assignments = frappe.get_all(
         "LMS Assignment",
         filters=filters,
@@ -962,30 +1043,71 @@ def get_all_student_assignment(user, limit=None, **kwargs):
     )
 
     result = []
+    now = now_datetime()
+
     for a in user_assignments:
+        # Get student status from lookup - FIXED: Use dict access
+        student_status_record = status_lookup.get(a.get("name"))
+
+        if not student_status_record:
+            # This shouldn't happen, but just in case, create it
+            from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import create_student_status
+            create_student_status(a.get("name"), user)
+
+            # Set default values
+            student_status = "Pending"
+            submission_id = None
+        else:
+            student_status = student_status_record.get("status")
+            submission_id = student_status_record.get("submission")
+
+        # Get submission details if exists
+        student_score = None
+        student_total_score = None
+        has_submission = False
+
+        if submission_id:
+            submission = frappe.db.get_value(
+                "LMS Assignment Submission",
+                submission_id,
+                ["score", "total_score"],
+                as_dict=True
+            )
+            if submission:
+                student_score = submission.get("score")
+                student_total_score = submission.get("total_score")
+                has_submission = True
+
+        # Auto-update to Overdue if needed (and not yet submitted)
+        if student_status == "Pending":
+            due_date = a.get("due_date")
+            if due_date and get_datetime(due_date) < now:
+                # Update status to Overdue
+                from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import update_student_status
+                update_student_status(a.get("name"), user, "Overdue")
+                student_status = "Overdue"
+
+        # Count attempts for this student
+        attempts_made = frappe.db.count(
+            "LMS Assignment Submission",
+            {"assignment": a.get("name"), "member": user}
+        )
+
+        # Get quiz questions
         quiz_questions = frappe.get_all(
             "LMS Quiz Question",
             filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
             fields=[
-                "name",
-                "question",
-                "question_type",
-                "marks",
-                "option_a",
-                "option_b",
-                "option_c",
-                "option_d",
-                "correct_answer",
-                "explanation",
-                "duration",
-                "selected_answer"
+                "name", "question", "question_type", "marks",
+                "option_a", "option_b", "option_c", "option_d",
+                "correct_answer", "explanation", "duration", "selected_answer"
             ],
         )
 
-        # Fetch LMS Questions referenced by the quiz questions
+        # Get LMS questions
         lms_questions = []
         for q in quiz_questions:
-            if q.get("question"):  # This is the LMS Question name
+            if q.get("question"):
                 lms_question_data = frappe.get_all(
                     "LMS Question",
                     filters={"name": q.get("question")},
@@ -993,7 +1115,6 @@ def get_all_student_assignment(user, limit=None, **kwargs):
                 )
                 if lms_question_data:
                     lms_q = lms_question_data[0]
-                    # Determine correct option based on is_correct fields
                     correct_option = "A"
                     if lms_q.get("is_correct_2"):
                         correct_option = "B"
@@ -1008,6 +1129,7 @@ def get_all_student_assignment(user, limit=None, **kwargs):
                         "correct_option": correct_option
                     })
 
+        # Get instructor profile
         user_profile = frappe.get_all(
             "User Profile",
             filters={"user": a.get("owner")},
@@ -1015,81 +1137,83 @@ def get_all_student_assignment(user, limit=None, **kwargs):
         )
 
         instructor_user = frappe.get_doc(
-            "User", user_profile[0].user if user_profile else a.get("owner")
+            "User", user_profile[0].get("user") if user_profile else a.get("owner")
         )
 
-        result.append(
-            {
-                "id": a.get("name"),
-                "title": a.get("title"),
-                "type": a.get("type"),
-                "question": a.get("question"),
-                "created_at": a.get("creation"),
-                "description": a.get("instructions") or a.get("description"),
-                "file": a.get("file"),
-                "resource_link": a.get("resource_link"),
-                "show_answer": a.get("show_answer"),
-                "due_date": a.get("due_date"),
-                "total_marks": a.get("test_score"),
-                "submitted": a.get("submitted"),
-                "drafted": a.get("drafted"),
-                "grade_assignment": a.get("grade_assignment"),
-                "is_public": a.get("public"),
-                "status": a.get("status"),
-                "late_submission": a.get("late_submission"),
-                "set_reminders": a.get("set_reminders"),
-                "attempts_allowed": a.get("attempts_allowed"),
-                "attempts_made": a.get("attempts_made"),
-                "duration": a.get("duration"),
-                "lms_questions": lms_questions,
-                "quiz_questions": [
-    {
-        "id": q.get("name"),
-        "question_id": q.get("question"),  # LMS Question reference
-        "question_text": frappe.db.get_value("LMS Question", q.get("question"), "question") if q.get("question") else None,
-        "question_type": q.get("question_type"),
-        "marks": q.get("marks"),
-        "option_a": q.get("option_a"),
-        "option_b": q.get("option_b"),
-        "option_c": q.get("option_c"),
-        "option_d": q.get("option_d"),
-        "correct_answer": q.get("correct_answer"),
-        "explanation": q.get("explanation"),
-        "selected_answer": q.get("selected_answer")
-    }
-    for q in quiz_questions
-],
+        # Calculate attempts remaining
+        attempts_remaining = a.get("attempts_allowed", 1) - attempts_made
 
-                "subject": (
-                    {
-                        "id": a.get("subject"),
-                        "subject_name": frappe.db.get_value(
-                            "Subject", a.get("subject"), "subject_name"
-                        ),
-                    }
-                    if a.get("subject")
-                    else None
-                ),
-                "educational_level": (
-                    {
-                        "id": a.get("educational_level"),
-                        "educational_level": frappe.db.get_value(
-                            "LMS Course Level",
-                            a.get("educational_level"),
-                            "education_level",
-                        ),
-                    }
-                    if a.get("educational_level")
-                    else None
-                ),
-                "instructor": {
-                    "full_name": instructor_user.full_name,
-                    "email": user_profile[0].user if user_profile else a.get("owner"),
-                    "bio": user_profile[0].bio if user_profile else "",
-                    "profile_image": user_profile[0].profile_image if user_profile else "",
-                },
-            }
-        )
+        result.append({
+            "id": a.get("name"),
+            "title": a.get("title"),
+            "type": a.get("type"),
+            "question": a.get("question"),
+            "created_at": a.get("creation"),
+            "description": a.get("instructions") or a.get("description"),
+            "file": a.get("file"),
+            "resource_link": a.get("resource_link"),
+            "show_answer": a.get("show_answer"),
+            "due_date": a.get("due_date"),
+            "total_marks": a.get("test_score"),
+            "grade_assignment": a.get("grade_assignment"),
+            "is_public": a.get("public"),
+            "drafted": a.get("drafted"),
+            "status": student_status,
+            "has_submission": has_submission,
+            "student_score": student_score,
+            "student_total_score": student_total_score,
+            "submission_id": submission_id,
+
+            # Attempts tracking
+            "attempts_allowed": a.get("attempts_allowed", 1),
+            "attempts_made": attempts_made,
+            "attempts_remaining": max(0, attempts_remaining),
+            "can_submit": attempts_remaining > 0 and student_status not in ["Pass", "Fail"],
+
+            "late_submission": a.get("late_submission"),
+            "set_reminders": a.get("set_reminders"),
+            "duration": a.get("duration"),
+            "lms_questions": lms_questions,
+            "quiz_questions": [
+                {
+                    "id": q.get("name"),
+                    "question_id": q.get("question"),
+                    "question_text": frappe.db.get_value("LMS Question", q.get("question"), "question") if q.get("question") else None,
+                    "question_type": q.get("question_type"),
+                    "marks": q.get("marks"),
+                    "option_a": q.get("option_a"),
+                    "option_b": q.get("option_b"),
+                    "option_c": q.get("option_c"),
+                    "option_d": q.get("option_d"),
+                    "correct_answer": q.get("correct_answer"),
+                    "explanation": q.get("explanation"),
+                    "selected_answer": q.get("selected_answer")
+                }
+                for q in quiz_questions
+            ],
+            "subject": (
+                {
+                    "id": a.get("subject"),
+                    "subject_name": frappe.db.get_value("Subject", a.get("subject"), "subject_name"),
+                }
+                if a.get("subject") else None
+            ),
+            "educational_level": (
+                {
+                    "id": a.get("educational_level"),
+                    "educational_level": frappe.db.get_value(
+                        "LMS Course Level", a.get("educational_level"), "education_level"
+                    ),
+                }
+                if a.get("educational_level") else None
+            ),
+            "instructor": {
+                "full_name": instructor_user.full_name,
+                "email": user_profile[0].get("user") if user_profile else a.get("owner"),
+                "bio": user_profile[0].get("bio") if user_profile else "",
+                "profile_image": user_profile[0].get("profile_image") if user_profile else "",
+            },
+        })
 
     return {
         "success": True,
@@ -1097,7 +1221,6 @@ def get_all_student_assignment(user, limit=None, **kwargs):
         "data": result,
         "count": len(result),
     }
-
 
 @frappe.whitelist()
 def get_all_instructor_assignment(user, limit=None, **kwargs):
@@ -1148,7 +1271,6 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
         # Build lms_questions list by resolving referenced LMS Question docs
         lms_questions = []
         for q in quiz_questions:
-            # q.get("question") is expected to hold the LMS Question name (if it's a reference)
             if q.get("question"):
                 lms_question_data = frappe.get_all(
                     "LMS Question",
@@ -1252,7 +1374,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
             "quiz_questions": [
     {
         "id": q.get("name"),
-        "question_id": q.get("question"),  # LMS Question reference
+        "question_id": q.get("question"),
         "question_text": frappe.db.get_value("LMS Question", q.get("question"), "question") if q.get("question") else None,
         "question_type": q.get("question_type"),
         "marks": q.get("marks"),
@@ -1300,10 +1422,6 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
 def get_assignment_details(assignment):
     """
     Fetch detailed information about a specific assignment.
-
-    Response structure consistent with get_all_student_assignment. Returns:
-      - data: single assignment object (with lms_questions and quiz_questions)
-      - count: 1 (when found) or 0 (when not found)
     """
     assignments = frappe.get_all(
         "LMS Assignment",
@@ -1443,12 +1561,11 @@ def get_assignment_details(assignment):
         "attempts_allowed": a.get("attempts_allowed"),
         "duration": a.get("duration"),
         "attempts_made": a.get("attempts_made"),
-        # include lms_questions (matches get_all_student_assignment)
         "lms_questions": lms_questions,
         "quiz_questions": [
     {
         "id": q.get("name"),
-        "question_id": q.get("question"),  # LMS Question reference
+        "question_id": q.get("question"),
         "question_text": frappe.db.get_value("LMS Question", q.get("question"), "question") if q.get("question") else None,
         "question_type": q.get("question_type"),
         "marks": q.get("marks"),
@@ -1495,81 +1612,69 @@ def get_assignment_details(assignment):
 @frappe.whitelist()
 def get_overdue_assignments(student):
     """
-    Fetch all assignments that are overdue (due date has passed and not submitted) for a specific student.
+    Fetch all assignments that are overdue for a specific student using student status.
     """
-    from frappe.utils import getdate
-
-    today = getdate()
-
-    # Get all assignment IDs where this student is a recipient (from PL Students)
-    student_links = frappe.get_all(
-        "PL Students",
-        filters={"students": student},
-        fields=["parent"],
-    )
-    assignment_ids = [s.parent for s in student_links]
-
-    if not assignment_ids:
-        return {
-            "success": True,
-            "message": "No overdue assignments found",
-            "data": [],
-            "count": 0,
-        }
-
-    overdue_assignments = frappe.get_all(
-        "LMS Assignment",
-        filters={
-            "name": ["in", assignment_ids],
-            "due_date": ["<", today],
-            "submitted": 0,
-            "drafted": 0,
-        },
-        fields=["*"],
-        order_by="due_date asc",
-    )
-
-    if not overdue_assignments:
-        return {
-            "success": True,
-            "message": "No overdue assignments found",
-            "data": [],
-            "count": 0,
-        }
-
-    result = []
-    for a in overdue_assignments:
-        quiz_questions = frappe.get_all(
-            "LMS Quiz Question",
-            filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
-            fields=[
-                "name",
-                "question",
-                "question_type",
-                "marks",
-                "option_a",
-                "option_b",
-                "option_c",
-                "option_d",
-                "correct_answer",
-                "explanation",
-                "duration",
-                "selected_answer"
-            ],
+    try:
+        # Get overdue assignments from student status table
+        overdue_status_records = frappe.get_all(
+            "LMS Assignment Student Status",
+            filters={
+                "student": student,
+                "status": "Overdue"
+            },
+            fields=["assignment"]
         )
 
-        user_profile = frappe.get_all(
-            "User Profile",
-            filters={"user": a.get("owner")},
+        if not overdue_status_records:
+            return {
+                "success": True,
+                "message": "No overdue assignments found",
+                "data": [],
+                "count": 0,
+            }
+
+        assignment_ids = [s.assignment for s in overdue_status_records]
+
+        # Fetch assignment details
+        overdue_assignments = frappe.get_all(
+            "LMS Assignment",
+            filters={"name": ["in", assignment_ids]},
             fields=["*"],
+            order_by="due_date asc",
         )
 
-        instructor_user = frappe.get_doc(
-            "User", user_profile[0].get("user") if user_profile else a.get("owner")
-        )
+        result = []
+        for a in overdue_assignments:
+            quiz_questions = frappe.get_all(
+                "LMS Quiz Question",
+                filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
+                fields=[
+                    "name",
+                    "question",
+                    "question_type",
+                    "marks",
+                    "option_a",
+                    "option_b",
+                    "option_c",
+                    "option_d",
+                    "correct_answer",
+                    "explanation",
+                    "duration",
+                    "selected_answer"
+                ],
+            )
 
-        result.append(
-            {
+            user_profile = frappe.get_all(
+                "User Profile",
+                filters={"user": a.get("owner")},
+                fields=["*"],
+            )
+
+            instructor_user = frappe.get_doc(
+                "User", user_profile[0].get("user") if user_profile else a.get("owner")
+            )
+
+            result.append({
                 "id": a.get("name"),
                 "title": a.get("title"),
                 "type": a.get("type"),
@@ -1585,14 +1690,14 @@ def get_overdue_assignments(student):
                 "drafted": a.get("drafted"),
                 "grade_assignment": a.get("grade_assignment"),
                 "is_public": a.get("public"),
-                "status": a.get("status"),
+                "status": "Overdue",
                 "late_submission": a.get("late_submission"),
                 "set_reminders": a.get("set_reminders"),
                 "attempts_allowed": a.get("attempts_allowed"),
                 "quiz_questions": [
     {
         "id": q.get("name"),
-        "question_id": q.get("question"),  # LMS Question reference
+        "question_id": q.get("question"),
         "question_text": frappe.db.get_value("LMS Question", q.get("question"), "question") if q.get("question") else None,
         "question_type": q.get("question_type"),
         "marks": q.get("marks"),
@@ -1636,15 +1741,21 @@ def get_overdue_assignments(student):
                     "bio": user_profile[0].get("bio") if user_profile else "",
                     "profile_image": user_profile[0].get("profile_image") if user_profile else "",
                 },
-            }
-        )
+            })
 
-    return {
-        "success": True,
-        "message": "Overdue assignments fetched successfully",
-        "data": result,
-        "count": len(result),
-    }
+        return {
+            "success": True,
+            "message": "Overdue assignments fetched successfully",
+            "data": result,
+            "count": len(result),
+        }
+
+    except Exception as e:
+        frappe.log_error(frappe.get_traceback(), "Get Overdue Assignments Failed")
+        return {
+            "success": False,
+            "error": str(e)
+        }
 
 @frappe.whitelist()
 def mark_overdue_assignments():

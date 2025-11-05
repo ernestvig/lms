@@ -275,7 +275,7 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None,
 @frappe.whitelist(allow_guest=True)
 def get_all_courses(limit=None, search=None, **kwargs):
 	limit = int(limit) if limit else 100
-	filters = {"published": 1}
+	filters = {"published": 1, "course_status": "Approved"}
 	filters.update(kwargs)
 
 	# Add search filter for title if search parameter is provided

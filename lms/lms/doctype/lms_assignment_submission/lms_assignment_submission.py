@@ -12,19 +12,8 @@ from frappe.utils import get_datetime, now_datetime
 
 class LMSAssignmentSubmission(Document):
 	def validate(self):
-		# self.validate_duplicates()
 		self.validate_url()
 		self.validate_status()
-
-	# def validate_duplicates(self):
-		# if frappe.db.exists(
-		# 	"LMS Assignment Submission",
-		# 	{"assignment": self.assignment, "member": self.member, "name": ["!=", self.name]},
-		# ):
-		# 	lesson_title = frappe.db.get_value("Course Lesson", self.lesson, "title")
-		# 	frappe.throw(
-		# 		_("Assignment for Lesson {0} by {1} already exists.").format(lesson_title, self.member_name)
-		# 	)
 
 	def validate_url(self):
 		if self.type == "URL" and not validate_url(self.answer):
@@ -138,7 +127,6 @@ class LMSAssignmentSubmission(Document):
 Percentage: {percentage:.2f}%
 Final Score: {final_score:.2f}/{test_score_value}"""
 
-			# NO NEED TO INCREMENT attempts_made - WE COUNT SUBMISSIONS DYNAMICALLY
 			self.save(ignore_permissions=True)
 
 		except Exception as e:
@@ -212,12 +200,9 @@ def upload_assignment(
 		})
 		doc.save(ignore_permissions=True)
 
-		# Update Assignment Status to Submitted (on first submission)
-		if existing_attempts == 0:
-			frappe.db.set_value("LMS Assignment", assignment, {
-				"status": "Submitted",
-				"submitted": 1
-			})
+		# Update student status to "Submitted"
+		from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import update_student_status
+		update_student_status(assignment, frappe.session.user, "Submitted", doc.name)
 
 		# Calculate remaining attempts after this new submission
 		attempts_remaining = attempts_allowed - (existing_attempts + 1)
@@ -262,6 +247,11 @@ def grade_assignment(name, result, comments, score, totalScore, file):
 	doc.total_score = totalScore
 	doc.file = file
 	doc.save(ignore_permissions=True)
+
+	# Update student status
+	from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import update_student_status
+	update_student_status(doc.assignment, doc.member, result, doc.name)
+
 	return {"message": "Assignment graded successfully."}
 
 @frappe.whitelist()
@@ -328,12 +318,10 @@ def submit_quiz(assignment, answers):
 		# Now run auto-grading
 		submission.auto_grade_quiz()
 
-		# Update Assignment status to Submitted (only on first submission by this user)
-		if attempts_made == 0:
-			frappe.db.set_value("LMS Assignment", assignment, {
-				"status": "Submitted",
-				"submitted": 1
-			})
+		# Update student status based on grading result
+		from lms.lms.doctype.lms_assignment_student_status.lms_assignment_student_status import update_student_status
+		submission.reload()
+		update_student_status(assignment, frappe.session.user, submission.status, submission.name)
 
 		frappe.db.commit()
 
@@ -689,12 +677,15 @@ def get_assignment_submission_details(submission_id):
 			"assignment_attachment": submission.assignment_attachment,
 			"attempts_allowed": assignment.get("attempts_allowed", 1),
 			"duration": assignment.get("duration", 0),
+			"instructions": assignment.get("instructions", ""),
+			"resource_link": assignment.get("resource_link", ""),
+			"correction_file": submission.file,
 			"subject": (
 			{
 				"id": assignment.subject,
 				"subject_name": frappe.db.get_value("Subject", assignment.subject, "subject_name")
 			} if assignment.subject else None
-)
+			),
 		}
 
 		return {
