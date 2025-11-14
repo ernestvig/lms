@@ -2003,7 +2003,7 @@ def get_course_detail_new(course_name):
 
 
 @frappe.whitelist(allow_guest=True)
-def get_published_courses(limit=10, page=1):
+def get_published_courses(limit=15, page=1):
 	"""
 	Get published courses with pagination using Frappe API.
 	"""
