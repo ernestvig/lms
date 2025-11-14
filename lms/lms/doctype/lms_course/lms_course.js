@@ -21,6 +21,9 @@ frappe.ui.form.on("LMS Course", {
 	},
 	refresh: (frm) => {
 		frm.add_web_link(`/lms/courses/${frm.doc.name}`, "See on Website");
+		frm.add_custom_button(__('Approved'), function() {
+			frappe.msgprint(frm.doc.course_status === 'Approved' ? 'This course is already approved.' : 'This course is now approved.');
+		});
 
 		if (!frm.doc.currency)
 			frappe.db
