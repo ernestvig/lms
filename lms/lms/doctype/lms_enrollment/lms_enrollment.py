@@ -208,7 +208,7 @@ def get_student_enrollments(student=None, limit=None, start=0, status=None):
 			"enrolled": course.enrollments or 0,
 			"modules": chapter_count,
 			"status": course_status,
-			"percentage_complete": enrollment.progress or 0,
+			"percentage_complete": course_progress or 0, # enrollment.progress or
 			"duration": duration
 		}
 
