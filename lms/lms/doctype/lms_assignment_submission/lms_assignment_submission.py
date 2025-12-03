@@ -342,6 +342,7 @@ def submit_quiz(assignment, answers):
 				{
 					"question": quiz_ans.question,
 					"selected_option": quiz_ans.selected_option,
+					"correct_answer": quiz_ans.correct_answer,
 					"is_correct": quiz_ans.get("is_correct", 0),
 					"marks_awarded": quiz_ans.get("marks_awarded", 0),
 				}

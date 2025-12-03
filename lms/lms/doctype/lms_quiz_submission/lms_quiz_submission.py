@@ -18,8 +18,14 @@ class LMSQuizSubmission(Document):
 		self.notify_member()
 
 	def validate_if_max_attempts_exceeded(self):
+		# Skip validation if this is a lesson-based quiz submission (no quiz linked)
+		if not self.quiz:
+			return
+			
 		max_attempts = frappe.db.get_value("LMS Quiz", self.quiz, ["max_attempts"])
-		if max_attempts == 0:
+		
+		# Skip if max_attempts is not set or is 0 (unlimited attempts)
+		if not max_attempts or max_attempts == 0:
 			return
 
 		current_user_submission_count = frappe.db.count(

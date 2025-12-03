@@ -1615,6 +1615,8 @@ def get_overdue_assignments(student):
     Fetch all assignments that are overdue for a specific student using student status.
     """
     try:
+        from frappe.utils import now_datetime, get_datetime
+        
         # Get overdue assignments from student status table
         overdue_status_records = frappe.get_all(
             "LMS Assignment Student Status",
@@ -1643,8 +1645,16 @@ def get_overdue_assignments(student):
             order_by="due_date asc",
         )
 
+        # Filter assignments to only include those whose due_date has actually passed
+        now = now_datetime()
         result = []
         for a in overdue_assignments:
+            # Check if due_date has actually passed
+            due_date = a.get("due_date")
+            if not due_date or get_datetime(due_date) >= now:
+                # Skip this assignment - due date hasn't passed or doesn't exist
+                continue
+                
             quiz_questions = frappe.get_all(
                 "LMS Quiz Question",
                 filters={"parent": a.get("name"), "parenttype": "LMS Assignment"},
