@@ -437,6 +437,21 @@ def serialize_course(course_name):
 							"selected_answer",
 						],
 					)
+					
+					# Add question_text for each question
+					for question in quiz_questions:
+						if question.get("question"):
+							try:
+								if frappe.db.exists("LMS Question", question["question"]):
+									lms_question = frappe.get_doc("LMS Question", question["question"])
+									question["question_text"] = getattr(lms_question, "question", question["question"])
+								else:
+									question["question_text"] = question["question"]
+							except Exception:
+								question["question_text"] = question["question"]
+						else:
+							question["question_text"] = ""
+							
 				except Exception as e:
 					frappe.log_error(f"Quiz Questions query failed: {str(e)}", "serialize_course")
 					quiz_questions = []
@@ -2444,6 +2459,8 @@ def serialize_course_new(course_name):
 										question["question_text"] = question["question"]
 								except Exception:
 									question["question_text"] = question["question"]
+							else:
+								question["question_text"] = ""
 							quiz_questions.append(question)
 					except Exception as e:
 						frappe.log_error(f"Quiz Questions query failed: {str(e)}", "serialize_course")
@@ -2527,3 +2544,231 @@ def serialize_course_new(course_name):
 	except Exception as e:
 		frappe.log_error(frappe.get_traceback(), "Serialize Course Failed")
 		return None
+
+@frappe.whitelist()
+def submit_course_lesson_quiz(lesson, answers):
+	"""
+	Submit quiz answers for a course lesson quiz.
+	answers = [{ "question": "QQ-230924-00001", "selected_option": "A" }, ...]
+	"""
+	try:
+		if frappe.session.user == "Guest":
+			frappe.throw(_("Login required"))
+
+		# Parse answers if they come as JSON string
+		if isinstance(answers, str):
+			import json
+			answers = json.loads(answers)
+
+		# Get lesson details
+		lesson_doc = frappe.get_doc("Course Lesson", lesson)
+		
+		if lesson_doc.content_type != "Quiz":
+			frappe.throw(_("Lesson is not a quiz."))
+
+		# Get quiz questions from the lesson
+		quiz_questions = frappe.get_all(
+			"LMS Quiz Question",
+			filters={"parent": lesson, "parenttype": "Course Lesson"},
+			fields=["name", "question", "correct_answer", "marks", "option_a", "option_b", "option_c", "option_d"]
+		)
+
+		if not quiz_questions:
+			frappe.throw(_("No quiz questions found in this lesson."))
+
+		# Create a dict of student answers for easy lookup
+		student_answers = {ans.get("question"): ans.get("selected_option", "") for ans in answers}
+
+		# Calculate scores
+		total_score = 0
+		max_possible_score = 0
+		result_rows = []
+
+		for q in quiz_questions:
+			# Get marks for this question (default to 1 if not set)
+			question_marks = q.get("marks", 1)
+			max_possible_score += question_marks
+
+			# Get student's selected option
+			selected = student_answers.get(q.name, "")
+
+			# Check if answer is correct
+			correct_answer = q.get("correct_answer", "").strip()
+			is_correct = selected.strip() == correct_answer if selected and correct_answer else False
+			marks = question_marks if is_correct else 0
+			total_score += marks
+
+			# Get question text for display
+			question_text = ""
+			if q.get("question"):
+				try:
+					if frappe.db.exists("LMS Question", q.question):
+						lms_question = frappe.get_doc("LMS Question", q.question)
+						question_text = lms_question.question
+					else:
+						question_text = q.question
+				except:
+					question_text = q.question
+			
+			# Prepare result row with correct field names for LMS Quiz Result
+			result_rows.append({
+				"question": question_text,  # Text field - the actual question text
+				"question_name": q.get("question"),  # Link to LMS Question
+				"answer": selected,  # Student's selected option (A, B, C, D)
+				"is_correct": 1 if is_correct else 0,
+				"marks": marks,
+				"marks_out_of": question_marks
+			})
+
+		# Calculate percentage
+		if max_possible_score > 0:
+			percentage = (total_score / max_possible_score) * 100
+		else:
+			percentage = 0
+
+		# Get passing percentage (default to 50%)
+		passing_percentage = 50
+	
+		# Ensure all values are integers to prevent NoneType errors
+		total_score = int(total_score) if total_score is not None else 0
+		max_possible_score = int(max_possible_score) if max_possible_score is not None else 0
+		percentage = int(percentage) if percentage is not None else 0
+		passing_percentage = int(passing_percentage) if passing_percentage is not None else 50
+
+		# Create submission doc
+		submission = frappe.get_doc({
+			"doctype": "LMS Quiz Submission",
+			"lesson": lesson,
+			"course": lesson_doc.course,
+			"member": frappe.session.user,
+			"score": total_score,
+			"score_out_of": max_possible_score,
+			"percentage": int(percentage),
+			"passing_percentage": passing_percentage
+		})
+
+		# Add result rows
+		for row in result_rows:
+			submission.append("result", row)
+
+		submission.insert(ignore_permissions=True)
+		frappe.db.commit()
+
+		# Reload submission to get updated values
+		submission.reload()
+
+		# Prepare response with detailed answers
+		detailed_answers = []
+		for result_row in submission.result:
+			# Get question details from quiz_questions
+			quiz_q = next((q for q in quiz_questions if q.get("question") == result_row.question_name), None)
+			
+			detailed_answers.append({
+				"question_id": result_row.question_name,  # LMS Question link
+				"question_text": result_row.question,  # The actual question text
+				"selected_option": result_row.answer,  # Student's selected option (A, B, C, D)
+				"correct_answer": quiz_q.get("correct_answer", "") if quiz_q else "",
+				"is_correct": result_row.is_correct,
+				"marks": result_row.marks,
+				"marks_out_of": result_row.marks_out_of,
+				"option_a": quiz_q.get("option_a", "") if quiz_q else "",
+				"option_b": quiz_q.get("option_b", "") if quiz_q else "",
+				"option_c": quiz_q.get("option_c", "") if quiz_q else "",
+				"option_d": quiz_q.get("option_d", "") if quiz_q else ""
+			})
+
+		# Determine pass/fail status - ensure values are not None
+		final_percentage = submission.percentage if submission.percentage is not None else 0
+		final_passing_percentage = submission.passing_percentage if submission.passing_percentage is not None else passing_percentage
+		status = "Pass" if final_percentage >= final_passing_percentage else "Fail"
+
+		return {
+			"success": True,
+			"submission_id": submission.name,
+			"score": submission.score,
+			"score_out_of": submission.score_out_of,
+			"percentage": submission.percentage,
+			"status": status,
+			"passing_percentage": passing_percentage,
+			"answers": detailed_answers,
+			"message": f"Quiz submitted successfully. You scored {total_score}/{max_possible_score} ({percentage:.1f}%)"
+		}
+
+	except Exception as e:
+		frappe.log_error(title="Submit Course Lesson Quiz Error", message=frappe.get_traceback())
+		frappe.throw(_(f"Error submitting quiz: {str(e)}"))
+
+
+@frappe.whitelist()
+def get_course_lesson_quiz_submissions(lesson, student=None):
+	"""
+	Get all quiz submissions for a course lesson.
+	If student is provided, filter by that student.
+	"""
+	try:
+		filters = {"lesson": lesson}
+		if student:
+			filters["member"] = student
+
+		submissions = frappe.get_all(
+			"LMS Quiz Submission",
+			filters=filters,
+			fields=["name", "member", "member_name", "score", "score_out_of", "percentage", "passing_percentage", "creation", "modified"],
+			order_by="creation desc",
+			limit=1
+		)
+
+		enriched_submissions = []
+		for sub in submissions:
+			# Get detailed result
+			result_details = frappe.get_all(
+				"LMS Quiz Result",
+				filters={"parent": sub.name},
+				fields=["question","is_correct", "marks", "marks_out_of"],
+				order_by="idx asc"
+			)
+
+			# Get member details
+			member_details = {}
+			if sub.get("member"):
+				member_user = frappe.get_all(
+					"User",
+					filters={"name": sub.member},
+					fields=["full_name", "email", "user_image"],
+					limit=1
+				)
+				if member_user:
+					member_details = {
+						"full_name": member_user[0].get("full_name", ""),
+						"email": member_user[0].get("email", ""),
+						"user_image": member_user[0].get("user_image", "")
+					}
+
+			# Determine status
+			status = "Pass" if sub.percentage >= sub.passing_percentage else "Fail"
+
+			enriched_submissions.append({
+				"id": sub.name,
+				"member": member_details,
+				"score": sub.score,
+				"score_out_of": sub.score_out_of,
+				"percentage": sub.percentage,
+				"passing_percentage": sub.passing_percentage,
+				"status": status,
+				"created_at": sub.creation,
+				"modified_at": sub.modified,
+				"result_details": result_details
+			})
+
+		return {
+			"success": True,
+			"data": enriched_submissions[0] if enriched_submissions else None,
+			"count": len(enriched_submissions)
+		}
+
+	except Exception as e:
+		frappe.log_error(title="Get Course Lesson Quiz Submissions Error", message=frappe.get_traceback())
+		return {
+			"success": False,
+			"error": str(e)
+		}
