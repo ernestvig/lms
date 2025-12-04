@@ -9,7 +9,7 @@ class LMSTag(Document):
 	pass
 
 
-@frappe.whitelist()
-def get_all_tags(limit=None):
-    tags = frappe.get_all("LMSTag", fields=["name", "tag_name"], limit=limit)
-    return tags
+@frappe.whitelist(allow_guest=True)
+def get_all_tags():
+    tags = frappe.get_all("LMS Tag", fields=["name", "tag_name"])
+    return tags 
