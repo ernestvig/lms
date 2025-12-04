@@ -2806,7 +2806,7 @@ def publish_course(course_name):
 	course.published = True
 	course.draft = False 
 	course.visibility = "public"
-	course.save()
+	course.save(ignore_permissions=True)
 	return {
 		"success": True,
 		"message": "Course published successfully"
