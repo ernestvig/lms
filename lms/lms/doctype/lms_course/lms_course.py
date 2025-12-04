@@ -2799,3 +2799,15 @@ def get_course_lesson_quiz_submissions(lesson, student=None):
 			"success": False,
 			"error": str(e)
 		}
+
+@frappe.whitelist()
+def publish_course(course_name):
+	course = frappe.get_doc("LMS Course", course_name)
+	course.published = True
+	course.draft = False 
+	course.visibility = "public"
+	course.save()
+	return {
+		"success": True,
+		"message": "Course published successfully"
+	}
