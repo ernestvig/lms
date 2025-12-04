@@ -2724,10 +2724,37 @@ def get_course_lesson_quiz_submissions(lesson, student=None):
 			result_details = frappe.get_all(
 				"LMS Quiz Result",
 				filters={"parent": sub.name},
-				fields=["question","is_correct", "marks", "marks_out_of"],
+				
+				fields=["question", "question_name", "answer", "is_correct", "marks", "marks_out_of"],
 				order_by="idx asc"
 			)
 
+			# Get quiz questions to fetch correct answers
+			quiz_questions = frappe.get_all(
+				"LMS Quiz Question",
+				filters={"parent": lesson, "parenttype": "Course Lesson"},
+				fields=["name", "question", "correct_answer"]
+			)
+			
+			# Create a mapping of question_name (LMS Question link) to correct_answer
+			correct_answers_map = {q.get("question"): q.get("correct_answer", "") for q in quiz_questions}
+
+			# Enrich result_details with correct_answer and selected_answer
+			enriched_result_details = []
+			for result in result_details:
+				question_name = result.get("question_name")
+				selected = result.get("answer", "")
+				correct = correct_answers_map.get(question_name, "")
+				
+				enriched_result_details.append({
+					"question": result.get("question"),
+					"selected_answer": selected,
+					"correct_answer": correct,
+					"is_correct": result.get("is_correct"),
+					"marks": result.get("marks"),
+					"marks_out_of": result.get("marks_out_of")
+				})
+			
 			# Get member details
 			member_details = {}
 			if sub.get("member"):
@@ -2757,7 +2784,7 @@ def get_course_lesson_quiz_submissions(lesson, student=None):
 				"status": status,
 				"created_at": sub.creation,
 				"modified_at": sub.modified,
-				"result_details": result_details
+				"result_details": enriched_result_details
 			})
 
 		return {
