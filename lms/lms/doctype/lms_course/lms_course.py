@@ -754,6 +754,9 @@ def create_course():
 			# Save chapter with all its lessons
 			chapter_doc.save(ignore_permissions=True)
 
+		# Commit chapters to database before adding references
+		frappe.db.commit()
+
 		# === Create separate course update for chapter references ===
 		# Get fresh copy of course to avoid timestamp issues
 		course_update = frappe.get_doc("LMS Course", course_doc.name)
