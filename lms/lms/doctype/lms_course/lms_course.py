@@ -614,12 +614,10 @@ def create_course():
 		course_doc.target_audience = data.get("targetAudience", "")
 
 		# Add Subject
-		subjects = []
 		if data.get("subjects"):
-			for idx, subject in enumerate(data["subjects"]):
-				subjects.append(data.get("subjects")[idx])
-			course_doc.append("subject", {
-				"subject": ",".join(subjects)
+			for subject in data["subjects"]:
+				course_doc.append("subject", {
+					"subject": subject
 				})
 
 		# Add instructor

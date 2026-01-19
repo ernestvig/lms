@@ -292,6 +292,35 @@ def get_past_question_details(past_question):
         data = []
         session_user = frappe.session.user
 
+        # get the date created and who created it
+        uploaded_by = frappe.db.get_value("LMS Past Questions", past_question, "created_by")
+        date_uploaded = frappe.db.get_value("LMS Past Questions", past_question, "creation")
+
+        # get full details of tutor, not just name
+        tutor = frappe.db.get_doc("User", uploaded_by, "full_name")
+        profile_data = frappe.get_value(
+						"User Profile",
+						{"user": uploaded_by},
+						"*",
+						as_dict=True
+					)
+        
+        #Fix spacing issues below
+        tutor = []
+        if profile_data:
+            user_doc = frappe.get_doc("User", profile_data["user"])
+            tutor.append({
+                "id": profile_data.name,
+                "full_name": getattr(user_doc, "full_name", ""),
+                "email": getattr(user_doc, "email", ""),
+				"phone_number": getattr(profile_data, "phone_number", ""),
+				"profile_image_url": getattr(user_doc, "user_image", ""),
+				"bio": getattr(profile_data, "bio", ""),
+				"rating": getattr(profile_data, "rating", 0),
+				"experience_years": getattr(profile_data, "teaching_experience", 0),
+				"subjects": json.loads(profile_data.subjects) if getattr(profile_data, "subjects", None) else [],
+			})
+
         for q in past_questions:
             file_folders = frappe.get_all(
                 "Past Question File Folder",
@@ -334,6 +363,8 @@ def get_past_question_details(past_question):
                 "description": q.get("description"),
                 "download_count": q.get("download_count") or 0,
                 "is_bookmarked": True if is_bookmarked else False,
+                "uploaded_by": tutor,
+                "date_uploaded": date_uploaded,
 
                 # Linked DocType: LMS Course Level
                 "educational_level": (
