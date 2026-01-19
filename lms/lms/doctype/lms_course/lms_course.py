@@ -256,6 +256,9 @@ def get_all_instructors_course(tutor, published=None, is_draft=None, limit=None,
 	# Step 3: Serialize each course
 	serialized_courses = [serialize_course_new(c["name"]) for c in courses]
 
+	# Filter out None values (courses that failed to serialize)
+	serialized_courses = [course for course in serialized_courses if course is not None]
+
 	# Step 4: Add instructor profile data
 	profile_data = {}
 	if frappe.db.exists("User Profile", {"user": tutor}):
@@ -855,11 +858,12 @@ def update_course():
 		course_doc.target_audience = data.get("targetAudience", "")
 
 		# Update Subjects
-		subjects = []
 		if data.get("subjects"):
-			for idx, subject in enumerate(data["subjects"]):
-				subjects.append(data.get("subjects")[idx])
-			course_doc.append("subject", {"subject": ",".join(subjects)})
+			# Clear existing subjects first
+			course_doc.subject = []
+			# Add each subject as a separate row
+			for subject in data["subjects"]:
+				course_doc.append("subject", {"subject": subject})
 
 		# Update instructor
 		if data.get("instructor"):

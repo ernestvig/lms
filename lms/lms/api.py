@@ -868,21 +868,28 @@ def get_payment_gateway_details(payment_gateway):
 
 
 def update_course_statistics():
+	"""Update statistics for all courses. Called by scheduled task."""
 	courses = frappe.get_all("LMS Course", fields=["name"])
 
 	for course in courses:
-		lessons = get_lesson_count(course.name)
+		update_single_course_statistics(course.name)
 
-		enrollments = frappe.db.count("LMS Enrollment", {"course": course.name, "member_type": "Student"})
 
-		avg_rating = get_average_rating(course.name) or 0
-		avg_rating = flt(avg_rating, frappe.get_system_settings("float_precision") or 3)
+def update_single_course_statistics(course_name):
+	"""Update statistics for a specific course only."""
+	lessons = get_lesson_count(course_name)
 
-		frappe.db.set_value(
-			"LMS Course",
-			course.name,
-			{"lessons": lessons, "enrollments": enrollments, "rating": avg_rating},
-		)
+	enrollments = frappe.db.count("LMS Enrollment", {"course": course_name, "member_type": "Student"})
+
+	avg_rating = get_average_rating(course_name) or 0
+	avg_rating = flt(avg_rating, frappe.get_system_settings("float_precision") or 3)
+
+	frappe.db.set_value(
+		"LMS Course",
+		course_name,
+		{"lessons": lessons, "enrollments": enrollments, "rating": avg_rating},
+		update_modified=False,  # Don't update modified timestamp for statistics
+	)
 
 
 @frappe.whitelist()

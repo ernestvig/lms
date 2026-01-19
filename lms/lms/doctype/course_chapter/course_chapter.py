@@ -4,14 +4,16 @@
 import frappe
 from frappe.model.document import Document
 
-from lms.lms.api import update_course_statistics
+from lms.lms.api import update_single_course_statistics
 from lms.lms.utils import get_course_progress
 
 
 class CourseChapter(Document):
 	def on_update(self):
 		self.recalculate_course_progress()
-		update_course_statistics()
+		# Only update statistics for this chapter's course, not all courses
+		if self.course:
+			update_single_course_statistics(self.course)
 
 	def recalculate_course_progress(self):
 		previous_lessons = self.get_doc_before_save() and self.get_doc_before_save().as_dict().lessons
