@@ -293,7 +293,7 @@ def get_past_question_details(past_question):
         session_user = frappe.session.user
 
         # get the date created and who created it
-        uploaded_by = frappe.db.get_value("LMS Past Questions", past_question, "created_by")
+        uploaded_by = frappe.db.get_value("LMS Past Questions", past_question, "owner")
         date_uploaded = frappe.db.get_value("LMS Past Questions", past_question, "creation")
 
         # get full details of tutor, not just name
