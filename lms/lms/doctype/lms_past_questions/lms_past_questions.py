@@ -297,7 +297,7 @@ def get_past_question_details(past_question):
         date_uploaded = frappe.db.get_value("LMS Past Questions", past_question, "creation")
 
         # get full details of tutor, not just name
-        tutor = frappe.db.get_doc("User", uploaded_by, "full_name")
+        # tutor = frappe.get_doc("User", uploaded_by, "full_name")
         profile_data = frappe.get_value(
 						"User Profile",
 						{"user": uploaded_by},
