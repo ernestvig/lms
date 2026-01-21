@@ -861,7 +861,12 @@ def update_course():
 		course_doc.draft = 0 if data.get("visibility") == "public" else 1
 		course_doc.enable_certification = 1 if data.get("issueCertificate", False) else 0
 		course_doc.duration = data.get("duration", "")
-		course_doc.target_audience = data.get("targetAudience", "")
+		course_doc.target_audience = frappe.db.get_value(
+                                    "LMS Course Level",
+                                    data.get("educationLevel"),
+                                    "education_level"
+                                )
+		# data.get("targetAudience", "")
 
 		# Update Subjects
 		if data.get("subjects"):
