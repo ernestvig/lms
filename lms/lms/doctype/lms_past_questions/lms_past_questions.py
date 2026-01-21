@@ -150,6 +150,11 @@ def get_tutor_past_questions(tutor):
         frappe.log_error(frappe.get_traceback(), "get_tutor_past_questions Error")
         return {"success": False, "error": str(e)}
 
+@frappe.whitelist(allow_guest=True)
+def get_all_categories():
+    categories = frappe.get_all("LMS Category", fields=["name", "category"])
+    return {"success": True, "categories": categories}
+
 
 @frappe.whitelist(allow_guest=True)
 def get_all_past_questions():
