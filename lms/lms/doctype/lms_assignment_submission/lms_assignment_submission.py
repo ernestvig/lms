@@ -338,11 +338,18 @@ def submit_quiz(assignment, answers):
 		# Prepare response with detailed answers
 		detailed_answers = []
 		for quiz_ans in submission.quiz_answers:
+			# Get correct answer from assignment quiz questions
+			correct_answer = None
+			for q in assignment_doc.quiz_questions:
+				if q.name == quiz_ans.question:
+					correct_answer = q.get("correct_answer", "")
+					break
+			
 			detailed_answers.append(
 				{
 					"question": quiz_ans.question,
 					"selected_option": quiz_ans.selected_option,
-					"correct_answer": quiz_ans.correct_answer,
+					"correct_answer": correct_answer,
 					"is_correct": quiz_ans.get("is_correct", 0),
 					"marks_awarded": quiz_ans.get("marks_awarded", 0),
 				}
