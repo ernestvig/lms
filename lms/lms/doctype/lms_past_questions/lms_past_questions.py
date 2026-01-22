@@ -23,6 +23,321 @@ class LMSPastQuestions(Document):
 					).format(documentation_link)
 				)
 
+# create LMS Past Questions
+@frappe.whitelist()
+def create_past_questions():
+	"""
+	Create a new LMS Past Question with all related data.
+	Handles file uploads, comments, and payment settings.
+	"""
+	import json
+
+	try:
+		data = {}
+		if frappe.request and frappe.request.data:
+			data = json.loads(frappe.request.data)
+
+		# Validate required fields
+		if not data.get("title"):
+			return {"success": False, "error": "Title is required"}
+
+		# Create new Past Question document
+		past_question_doc = frappe.new_doc("LMS Past Questions")
+
+		# Set basic fields
+		past_question_doc.title = data.get("title", "")
+		past_question_doc.description = data.get("description", "")
+
+		# Set educational metadata
+		past_question_doc.educational_level = data.get("educational_level", "")
+		past_question_doc.subject = data.get("subject", "")
+		past_question_doc.question_type = data.get("question_type", "")
+		past_question_doc.exam_type = data.get("exam_type", "")
+		past_question_doc.academic_year = data.get("academic_year", "")
+		past_question_doc.category = data.get("category", "")
+
+		# Set file upload fields
+		past_question_doc.file = data.get("file", "")
+		past_question_doc.include_answer = 1 if data.get("include_answer", False) else 0
+
+		# Set visibility and status fields
+		past_question_doc.enable_comment = 1 if data.get("enable_comment", False) else 0
+		past_question_doc.public = 1 if data.get("public", False) else 0
+		past_question_doc.drafted = 1 if data.get("drafted", False) else 0
+		past_question_doc.student_link = data.get("student_link", "")
+		past_question_doc.download_count = 0  # Initialize download count
+
+		# Set payment fields
+		past_question_doc.paid_past_question = 1 if data.get("paid_past_question", False) else 0
+		if past_question_doc.paid_past_question:
+			past_question_doc.amount = data.get("amount", 0)
+			past_question_doc.currency = data.get("currency", "")
+			past_question_doc.amount_usd = data.get("amount_usd", 0)
+		else:
+			past_question_doc.amount = 0
+			past_question_doc.currency = ""
+			past_question_doc.amount_usd = 0
+
+		# Set created_by field
+		past_question_doc.created_by = frappe.session.user
+
+		# Insert the past question document
+		past_question_doc.insert(ignore_permissions=True)
+
+		# Handle file folder attachments (if provided)
+		if data.get("file_folder") and isinstance(data.get("file_folder"), list):
+			for file_item in data["file_folder"]:
+				if file_item.get("file_url"):
+					past_question_doc.append("p_q_file_folder", {
+						"files": file_item.get("file_url")
+					})
+
+		# Handle comments (if provided)
+		if data.get("comments") and isinstance(data.get("comments"), list):
+			for comment_item in data["comments"]:
+				if comment_item.get("comment"):
+					past_question_doc.append("comments", {
+						"comment": comment_item.get("comment")
+					})
+
+		# Save the document with child tables
+		if data.get("file_folder") or data.get("comments"):
+			past_question_doc.save(ignore_permissions=True)
+
+		# Commit to database
+		frappe.db.commit()
+
+		# Return success response with created document
+		return {
+			"success": True,
+			"message": "Past question created successfully",
+			"data": {
+				"id": past_question_doc.name,
+				"title": past_question_doc.title,
+				"description": past_question_doc.description,
+				"educational_level": past_question_doc.educational_level,
+				"subject": past_question_doc.subject,
+				"question_type": past_question_doc.question_type,
+				"exam_type": past_question_doc.exam_type,
+				"academic_year": past_question_doc.academic_year,
+				"category": past_question_doc.category,
+				"file_url": past_question_doc.file,
+				"include_answer": past_question_doc.include_answer,
+				"enable_comment": past_question_doc.enable_comment,
+				"public": past_question_doc.public,
+				"drafted": past_question_doc.drafted,
+				"student_link": past_question_doc.student_link,
+				"paid_past_question": past_question_doc.paid_past_question,
+				"amount": past_question_doc.amount,
+				"currency": past_question_doc.currency,
+				"amount_usd": past_question_doc.amount_usd,
+				"download_count": past_question_doc.download_count,
+				"created_by": past_question_doc.created_by,
+			}
+		}
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Create Past Question Error")
+		return {
+			"success": False,
+			"error": str(e),
+			"traceback": frappe.get_traceback()
+		}
+
+
+@frappe.whitelist()
+def update_past_questions():
+	"""
+	Update an existing LMS Past Question.
+	Handles updating all fields, file uploads, comments, and payment settings.
+	"""
+	import json
+
+	try:
+		data = {}
+		if frappe.request and frappe.request.data:
+			data = json.loads(frappe.request.data)
+
+		# Validate required fields
+		past_question_id = data.get("past_question_id") or data.get("id") or data.get("name")
+		if not past_question_id:
+			return {"success": False, "error": "past_question_id is required for update"}
+
+		# Check if past question exists
+		if not frappe.db.exists("LMS Past Questions", past_question_id):
+			return {"success": False, "error": f"Past question {past_question_id} not found"}
+
+		# Get existing past question document
+		past_question_doc = frappe.get_doc("LMS Past Questions", past_question_id)
+
+		# Update basic fields (only if provided)
+		if "title" in data:
+			title = data.get("title", "").strip()
+			if not title:
+				return {"success": False, "error": "Title cannot be empty"}
+			past_question_doc.title = title
+
+		if "description" in data:
+			past_question_doc.description = data.get("description", "")
+
+		# Update educational metadata
+		if "educational_level" in data:
+			past_question_doc.educational_level = data.get("educational_level", "")
+		if "subject" in data:
+			past_question_doc.subject = data.get("subject", "")
+		if "question_type" in data:
+			past_question_doc.question_type = data.get("question_type", "")
+		if "exam_type" in data:
+			past_question_doc.exam_type = data.get("exam_type", "")
+		if "academic_year" in data:
+			past_question_doc.academic_year = data.get("academic_year", "")
+		if "category" in data:
+			past_question_doc.category = data.get("category", "")
+
+		# Update file upload fields
+		if "file" in data:
+			past_question_doc.file = data.get("file", "")
+		if "include_answer" in data:
+			past_question_doc.include_answer = 1 if data.get("include_answer", False) else 0
+
+		# Update visibility and status fields
+		if "enable_comment" in data:
+			past_question_doc.enable_comment = 1 if data.get("enable_comment", False) else 0
+		if "public" in data:
+			past_question_doc.public = 1 if data.get("public", False) else 0
+		if "drafted" in data:
+			past_question_doc.drafted = 1 if data.get("drafted", False) else 0
+		if "student_link" in data:
+			past_question_doc.student_link = data.get("student_link", "")
+
+		# Update payment fields
+		if "paid_past_question" in data:
+			past_question_doc.paid_past_question = 1 if data.get("paid_past_question", False) else 0
+			if past_question_doc.paid_past_question:
+				if "amount" in data:
+					past_question_doc.amount = data.get("amount", 0)
+				if "currency" in data:
+					past_question_doc.currency = data.get("currency", "")
+				if "amount_usd" in data:
+					past_question_doc.amount_usd = data.get("amount_usd", 0)
+			else:
+				past_question_doc.amount = 0
+				past_question_doc.currency = ""
+				past_question_doc.amount_usd = 0
+
+		# Update file folder attachments (if provided)
+		if "file_folder" in data and isinstance(data.get("file_folder"), list):
+			# Clear existing file folder entries
+			past_question_doc.p_q_file_folder = []
+			# Add new entries
+			for file_item in data["file_folder"]:
+				if file_item.get("file_url"):
+					past_question_doc.append("p_q_file_folder", {
+						"files": file_item.get("file_url")
+					})
+
+		# Update comments (if provided)
+		if "comments" in data and isinstance(data.get("comments"), list):
+			# Clear existing comments
+			past_question_doc.comments = []
+			# Add new comments
+			for comment_item in data["comments"]:
+				if comment_item.get("comment"):
+					past_question_doc.append("comments", {
+						"comment": comment_item.get("comment")
+					})
+
+		# Save the updated document
+		past_question_doc.save(ignore_permissions=True)
+
+		# Commit to database
+		frappe.db.commit()
+
+		# Return success response with updated document
+		return {
+			"success": True,
+			"message": "Past question updated successfully",
+			"data": {
+				"id": past_question_doc.name,
+				"title": past_question_doc.title,
+				"description": past_question_doc.description,
+				"educational_level": past_question_doc.educational_level,
+				"subject": past_question_doc.subject,
+				"question_type": past_question_doc.question_type,
+				"exam_type": past_question_doc.exam_type,
+				"academic_year": past_question_doc.academic_year,
+				"category": past_question_doc.category,
+				"file_url": past_question_doc.file,
+				"include_answer": past_question_doc.include_answer,
+				"enable_comment": past_question_doc.enable_comment,
+				"public": past_question_doc.public,
+				"drafted": past_question_doc.drafted,
+				"student_link": past_question_doc.student_link,
+				"paid_past_question": past_question_doc.paid_past_question,
+				"amount": past_question_doc.amount,
+				"currency": past_question_doc.currency,
+				"amount_usd": past_question_doc.amount_usd,
+				"download_count": past_question_doc.download_count,
+			}
+		}
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Update Past Question Error")
+		return {
+			"success": False,
+			"error": str(e),
+			"traceback": frappe.get_traceback()
+		}
+
+
+@frappe.whitelist()
+def delete_past_questions():
+	"""
+	Delete an LMS Past Question and all related child records.
+	"""
+	import json
+
+	try:
+		data = {}
+		if frappe.request and frappe.request.data:
+			data = json.loads(frappe.request.data)
+
+		# Validate required fields
+		past_question_id = data.get("past_question_id") or data.get("id") or data.get("name")
+		if not past_question_id:
+			return {"success": False, "error": "past_question_id is required for deletion"}
+
+		# Check if past question exists
+		if not frappe.db.exists("LMS Past Questions", past_question_id):
+			return {"success": False, "error": f"Past question {past_question_id} not found"}
+
+		# Get the document
+		past_question_doc = frappe.get_doc("LMS Past Questions", past_question_id)
+
+		# Store the name before deletion
+		deleted_name = past_question_doc.name
+		deleted_title = past_question_doc.title
+
+		# Delete the document (this will cascade delete child tables)
+		past_question_doc.delete(ignore_permissions=True)
+
+		# Commit to database
+		frappe.db.commit()
+
+		return {
+			"success": True,
+			"message": f"Past question '{deleted_title}' deleted successfully",
+			"deleted_id": deleted_name
+		}
+
+	except Exception as e:
+		frappe.log_error(frappe.get_traceback(), "Delete Past Question Error")
+		return {
+			"success": False,
+			"error": str(e),
+			"traceback": frappe.get_traceback()
+		}
+
 
 @frappe.whitelist(allow_guest=True)
 def get_tutor_past_questions(tutor):
