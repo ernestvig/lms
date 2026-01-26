@@ -869,12 +869,16 @@ def update_course():
 		# data.get("targetAudience", "")
 
 		# Update Subjects
+		print(f"🔵 Backend received subjects: {data.get('subjects')}")
+		print(f"🔵 Backend received tags: {data.get('tags')}")
 		if data.get("subjects"):
 			# Clear existing subjects first
 			course_doc.subject = []
 			# Add each subject as a separate row
 			for subject in data["subjects"]:
+				print(f"🔵 Appending subject: {subject}")
 				course_doc.append("subject", {"subject": subject})
+			print(f"🔵 Course doc subjects after append: {[s.subject for s in course_doc.subject]}")
 
 		# Update instructor
 		if data.get("instructor"):
@@ -882,7 +886,10 @@ def update_course():
 			course_doc.append("instructors", {"instructor": data.get("instructor")})
 
 		# Save course basic info first
+		print(f"🔵 Saving course with subjects: {[s.subject for s in course_doc.subject]}")
+		print(f"🔵 Saving course with tags: {course_doc.tags}")
 		course_doc.save(ignore_permissions=True)
+		print(f"🔵 Course saved successfully")
 
 		# === Track existing and new data ===
 		existing_chapters = {
@@ -1076,6 +1083,9 @@ def update_course():
 									lms_question_doc.is_correct_3 = 1 if correct_answer_index == 2 else 0
 									lms_question_doc.is_correct_4 = 1 if correct_answer_index == 3 else 0
 									lms_question_doc.save(ignore_permissions=True)
+
+									# Reload quiz_question_doc to get latest timestamp after saving lms_question_doc
+									quiz_question_doc.reload()
 
 									# Update Quiz Question
 									quiz_question_doc.marks = int(question_data.get("mark") or question_data.get("marks", 1))
