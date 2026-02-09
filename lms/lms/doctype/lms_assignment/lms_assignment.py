@@ -1100,7 +1100,8 @@ def get_all_student_assignment(user, limit=None, status_filter=None, **kwargs):
             fields=[
                 "name", "question", "question_type", "marks",
                 "option_a", "option_b", "option_c", "option_d",
-                "correct_answer", "explanation", "duration", "selected_answer"
+                # "correct_answer", 
+                "explanation", "duration", "selected_answer"
             ],
         )
 
@@ -1125,8 +1126,8 @@ def get_all_student_assignment(user, limit=None, status_filter=None, **kwargs):
 
                     lms_questions.append({
                         "name": lms_q.get("name"),
-                        "question": lms_q.get("question"),
-                        "correct_option": correct_option
+                        "question": lms_q.get("question")
+                        # "correct_option": correct_option
                     })
 
         # Get instructor profile
@@ -1185,7 +1186,7 @@ def get_all_student_assignment(user, limit=None, status_filter=None, **kwargs):
                     "option_b": q.get("option_b"),
                     "option_c": q.get("option_c"),
                     "option_d": q.get("option_d"),
-                    "correct_answer": q.get("correct_answer"),
+                    # "correct_answer": q.get("correct_answer"),
                     "explanation": q.get("explanation"),
                     "selected_answer": q.get("selected_answer")
                 }
@@ -1261,7 +1262,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
                 "option_b",
                 "option_c",
                 "option_d",
-                "correct_answer",
+                # "correct_answer",
                 "explanation",
                 "duration",
                 "selected_answer"
@@ -1291,7 +1292,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
                     lms_questions.append({
                         "name": lms_q.get("name"),
                         "question": lms_q.get("question"),
-                        "correct_option": correct_option,
+                        # "correct_option": correct_option,
                     })
 
         recipients = frappe.db.sql(
@@ -1382,7 +1383,7 @@ def get_all_instructor_assignment(user, limit=None, **kwargs):
         "option_b": q.get("option_b"),
         "option_c": q.get("option_c"),
         "option_d": q.get("option_d"),
-        "correct_answer": q.get("correct_answer"),
+        # "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
         "selected_answer": q.get("selected_answer"),
     }
@@ -1452,7 +1453,7 @@ def get_assignment_details(assignment):
             "option_b",
             "option_c",
             "option_d",
-            "correct_answer",
+            # "correct_answer",
             "explanation",
             "selected_answer"
         ],
@@ -1573,7 +1574,7 @@ def get_assignment_details(assignment):
         "option_b": q.get("option_b"),
         "option_c": q.get("option_c"),
         "option_d": q.get("option_d"),
-        "correct_answer": q.get("correct_answer"),
+        # "correct_answer": q.get("correct_answer"),
         "explanation": q.get("explanation"),
         "selected_answer": q.get("selected_answer"),
     }
