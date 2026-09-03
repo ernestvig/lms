@@ -347,11 +347,15 @@ def serialize_course(course_name):
 		)
 
 	# Subject
+	# `subject` is a Table MultiSelect of Course Subject rows, not a Link, so the row
+	# list can't be passed to get_value as a docname/filter.
 	subject = None
-	if course.subject:
-		subject_name = frappe.get_value("Subject", course.subject, "subject_name")
-		if subject_name:
-			subject_doc = frappe.get_doc("Subject", course.subject)
+	subject_links = [row.subject for row in (course.get("subject") or []) if row.subject]
+	if subject_links:
+		subject_doc = frappe.db.get_value(
+			"Subject", subject_links[0], ["name", "subject_name"], as_dict=True
+		)
+		if subject_doc:
 			subject = {"name": subject_doc.name, "subject_name": subject_doc.subject_name}
 
 	# Educational Level
